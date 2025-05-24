@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import BottomTabNavigator from "./components/layout/BottomTabNavigator";
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator(); 
 
 export default function App() {
   return (

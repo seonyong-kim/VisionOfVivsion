@@ -92,7 +92,7 @@ const OCRScreen = () => {
         </View>
         </>
       ) : (
-        // 빈 뷰로 대체하여 메모리 해제 도와준다.
+        // 빈 뷰로 대체하여 메모리 해제 도와준다. 
         <View style={styles.camera} />
       )}
     </View>
