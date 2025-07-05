@@ -3,7 +3,7 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import HomeScreen from "../../screens/HomeScreen";
 import OCRScreen from "../../screens/OCRScreen";
 import NavigationScreen from "../../screens/NavigationScreen";
-import SettingScreen from "../../screens/SettingScreen";
+import SettingStack from "../../screens/SettingStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -11,8 +11,12 @@ const BottomTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: "#4CAF50", // 활성화일때 색상을 의미
-        tabBarInactiveTintColor: "#9E9E9E", // 비활성화일때 색상 의미
+        headerShown: false,
+        tabBarActiveTintColor: "#FF8C42", // 활성화일때 색상을 의미
+        tabBarInactiveTintColor: "#FFFFFF", // 비활성화일때 색상 의미
+        tabBarStyle: {
+          backgroundColor: "#121212", // 탭 바 배경색
+        },
       }}
     >
       <Tab.Screen
@@ -51,7 +55,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen
         name="Setting"
-        component={SettingScreen}
+        component={SettingStack}
         options={{
           tabBarLabel: "설정",
           tabBarIcon: ({ color }) => (
@@ -64,3 +68,7 @@ const BottomTabNavigator = () => {
 };
 
 export default BottomTabNavigator;
+
+
+
+

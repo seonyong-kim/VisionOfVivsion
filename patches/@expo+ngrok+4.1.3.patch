@@ -1,0 +1,14 @@
+diff --git a/node_modules/@expo/ngrok/bin/run.js b/node_modules/@expo/ngrok/bin/run.js
+new file mode 100644
+index 0000000..355830d
+--- /dev/null
++++ b/node_modules/@expo/ngrok/bin/run.js
+@@ -0,0 +1,8 @@
++const path = require('path');
++
++// ✅ 프로젝트 폴더에 있는 ngrok.exe 경로를 직접 지정
++const ngrokPath = path.resolve(__dirname, '../../../../ngrok.exe');
++
++require('child_process').spawn(ngrokPath, process.argv.slice(2), {
++  stdio: 'inherit',
++});

@@ -40,6 +40,3 @@ const styles = StyleSheet.create({
   message: { textAlign: 'center', paddingBottom: 10 },
   camera: { flex: 1 },
 });
-
-
-

@@ -10,6 +10,7 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Root"
+        screenOptions={{ headerShown: false }}
       >
         <Stack.Screen
           name="Root"
@@ -20,3 +21,6 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+
+

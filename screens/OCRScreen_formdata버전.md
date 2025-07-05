@@ -33,27 +33,29 @@ const OCRScreen = () => {
 
     if(cameraRef.current){
       SetDisabled(true); // 버튼 누르면 버튼 비활성화
-      photo = await cameraRef.current.takePictureAsync({ base64: true });
+      photo = await cameraRef.current.takePictureAsync({ base64: false });
       setImage(photo);
-      //console.log("사진 촬영 결과", photo);
-      console.log("OCR 시작");
+      console.log("사진 촬영 결과", photo);
       Speech.speak("글자 인식을 진행합니다. 잠시만 기다려 주세요.", {
         language: 'ko-KR',
         rate: 1.0,
       });
     }
 
-    const jsonPayload = Json.stringify({
-      image: photo.base64,
-    })
+    const formData = new FormData();
+      formData.append('image', {
+        uri: photo.uri,
+        name: 'OCR.jpg',
+        type: 'image/jpeg',
+      });
 
     try{
       const response = await fetch('https://8cc3-182-172-19-130.ngrok-free.app/ocr/image', {
         method: "POST",
+        body: formData,
         headers: {
-          "Content-Type" : "application/json",
-        },
-        body: jsonPayload,
+          "Content-Type" : "multipart/form-data",
+        }
       })
     console.log("전송을 시도합니다");
 
@@ -140,6 +142,3 @@ const styles = StyleSheet.create({
     fontsize: 24
   },
 });
-
-
-

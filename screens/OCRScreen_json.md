@@ -140,6 +140,3 @@ const styles = StyleSheet.create({
     fontsize: 24
   },
 });
-
-
-
