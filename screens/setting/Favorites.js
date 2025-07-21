@@ -7,10 +7,10 @@ const Header = () => (
   <View style={styles.header}>
     <View style={styles.row}>
         <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name="star-outline" size={70} color="#4FC3F7" />
+          <MaterialCommunityIcons name="star-outline" size={70} color="#FF8C42" />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.headertext}>즐겨찾기</Text>
+          <Text style={styles.headerText}>즐겨찾기</Text>
         </View>
     </View>
   </View>
@@ -338,10 +338,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
-  headertext: {
+  headerText: {
     textAlign: "center",
     fontSize: 60,
-    color: "#4FC3F7",
+    color: "#FF8C42",
   },
   CRUD: {
     flex: 1,
@@ -444,6 +444,3 @@ const styles = StyleSheet.create({
 });
 
 export default Favorites;
-
-
-

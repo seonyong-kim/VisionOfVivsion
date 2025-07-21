@@ -3,7 +3,7 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import HomeScreen from "../../screens/HomeScreen";
 import OCRScreen from "../../screens/OCRScreen";
 import NavigationScreen from "../../screens/NavigationScreen";
-import SettingStack from "../../screens/SettingStack";
+import Setting from "../../screens/setting/SettingStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -55,7 +55,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen
         name="Setting"
-        component={SettingStack}
+        component={Setting}
         options={{
           tabBarLabel: "설정",
           tabBarIcon: ({ color }) => (
@@ -68,7 +68,3 @@ const BottomTabNavigator = () => {
 };
 
 export default BottomTabNavigator;
-
-
-
-
