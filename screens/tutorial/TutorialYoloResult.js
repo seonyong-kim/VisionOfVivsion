@@ -1,16 +1,27 @@
 import React, { useEffect } from "react";
 import * as Speech from "expo-speech";
 import { Image, View, StyleSheet, BackHandler } from "react-native";
+import { backGround } from "../../styles/BackGround";
+import { image } from "../../styles/Image";
 
-export default function TutorialYoloResult({ navigation }) {
+export default function TutorialYoloResult({ route, navigation }) {
+  const {rate, pitch} = route.params;
+
   const TutorialYoloResultTTS = async () => {
-    Speech.speak("책 탐지");
-    // 몇초 쉬자
-    Speech.speak("이와 같이 객체 인식에 성공하면 탐지된 물건을 안내해줍니다.");
+    Speech.speak("책 탐지"
+      + "이와 같이 객체 인식에 성공하면 탐지된 물건을 안내해줍니다.",{
+        rate,
+        pitch
+      }
+    );
 
+    const delay = 7000 * (rate < 1 ? (1 + (1 - rate)) : 1 / (1 + (rate - 1)));   
     setTimeout(() => {
-      navigation.navigate("TutorialYoloDanger"); // 전환할 화면 설정
-    }, 7000);
+      navigation.navigate("TutorialYoloDanger",{
+        rate: rate,
+        pitch: pitch
+      }); // 전환할 화면 설정
+    }, delay);
   };
 
   useEffect(() => {
@@ -25,24 +36,12 @@ export default function TutorialYoloResult({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.mainBackGround}>
+    <View style={backGround.main}>
       {/* 이미지 바꾸고 싶으면 이미지 경로 이부분만*/}
       <Image
         source={require("../../images/YoloResult.png")}
-        style={styles.fullImage}
+        style={image.full}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  mainBackGround: {
-    flex: 1,
-    backgroundColor: "#121212",
-  },
-  fullImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
-});

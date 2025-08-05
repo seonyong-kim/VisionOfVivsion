@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import HomeScreen from "../../screens/HomeScreen";
 import OCRScreen from "../../screens/OCRScreen";
-import NavigationScreen from "../../screens/NavigationScreen";
+import NavigationScreen from "../../screens/navigation/NavigationStack";
 import Setting from "../../screens/setting/SettingStack";
 
 const Tab = createBottomTabNavigator();

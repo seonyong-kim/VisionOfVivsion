@@ -3,6 +3,10 @@
     "name": "todo-app",
     "slug": "todo-app",
     "version": "1.0.0",
+    "assetBundlePatterns": [
+      "images/*",
+      "assets/**/*"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +28,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.vov1234.todoapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,8 +46,13 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
-      ]
-    ]
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a2a453ea-aa7f-45ce-bafc-2107254519f2"
+      }
+    }
   }
 }
- 

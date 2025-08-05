@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Button, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
+import { text } from "../styles/Text";
+import * as SecureStore from 'expo-secure-store';
+import { LoadSpeechInfo } from "./speech/LoadSpeechInfo";
 
-const SpeechSetting = () => {
+const SpeechSetting = ({onSaveComplete, rateChange, pitchChange}) => {
   const [rate, setRate] = useState(1.0);
   const [pitch, setPitch] = useState(1.0);
 
@@ -12,12 +15,45 @@ const SpeechSetting = () => {
     return Math.min(Math.max(result, min), max);
   };
 
+  // 음성 테스트를 위한 함수
   const testSpeech = () => {
     Speech.speak("음성테스트 진행중입니다.", {
       rate,
       pitch,
     });
   };
+
+  useEffect(() => {
+    // 음성 정보 불러오는 함수
+    LoadSpeechInfo(setRate, setPitch);
+    
+  }, []);
+
+  // 음성 정보 저장하는 함수
+  const saveSpeech = async() => {
+    const deviceId = await SecureStore.getItemAsync('deviceId');
+    // 서버로 전송
+    const response = await fetch('IP주소/setting/speech',{
+      method: "POST",
+      headers:{
+        "Content-Type" : "application/json",
+      },
+      body: JSON.stringify({
+        deviceId: deviceId,
+        rate: rate,
+        pitch: pitch,
+      }),
+    });
+    if(response.ok){
+      Speech.speak("저장완료 rate는 ", rate, " pitch는 ",pitch);
+      rateChange(rate);
+      pitchChange(pitch);
+      onSaveComplete?.(rate, pitch);
+    }else{
+      Speech.speak("저장 실패");
+      console.log(response);
+    }
+  }
 
   return (
     <View style={{ flex: 1, flexDirection: "column" }}>
@@ -27,7 +63,7 @@ const SpeechSetting = () => {
             <Feather name="volume-2" size={70} color="#FF8C42" />
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.headerText}>음성 설정</Text>
+            <Text style={text.header}>음성 설정</Text>
           </View>
         </View>
       </View>
@@ -49,7 +85,7 @@ const SpeechSetting = () => {
           <Text style={styles.adjustButtonText}>-</Text>
         </TouchableOpacity>
 
-        <Text style={styles.valueText}>{rate.toFixed(1)}</Text>
+        <Text style={styles.valueText}>{typeof rate === "number" ? rate.toFixed(1) : "1.0"}</Text>
         <TouchableOpacity
           style={styles.adjustButton}
           onPress={() => setRate(adjustValue(rate, +0.1))}
@@ -69,7 +105,7 @@ const SpeechSetting = () => {
             <Text style={styles.adjustButtonText}>-</Text>
           </TouchableOpacity>
 
-          <Text style={styles.valueText}>{pitch.toFixed(1)}</Text>
+          <Text style={styles.valueText}>{typeof pitch === "number" ? pitch.toFixed(1) : "1.0"}</Text>
 
           <TouchableOpacity
             style={styles.adjustButton}
@@ -81,12 +117,12 @@ const SpeechSetting = () => {
       </View>
 
       {/* 음성 설정 정보 저장 버튼 */}
-      <View style={styles.testButtonWrapper}>
-        <TouchableOpacity style={styles.testButton} onPress={() => {}}>
-          <Text style={styles.testButtonText}>저장</Text>
-        </TouchableOpacity>
+        <View style={styles.testButtonWrapper}>
+          <TouchableOpacity style={styles.testButton} onPress={saveSpeech}>
+            <Text style={styles.testButtonText}>저장</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
   );
 };
 
@@ -97,11 +133,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 30,
     justifyContent: "center",
-  },
-  headerText: {
-    textAlign: "center",
-    fontSize: 60,
-    color: "#FF8C42",
   },
   row: {
     flexDirection: "row",

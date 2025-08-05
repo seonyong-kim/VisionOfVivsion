@@ -50,7 +50,7 @@ const OCRScreen = () => {
       });
 
     try{
-      const response = await fetch('https://8cc3-182-172-19-130.ngrok-free.app/ocr/image', {
+      const response = await fetch('IP주소/ocr/image', {
         method: "POST",
         body: formData,
         headers: {

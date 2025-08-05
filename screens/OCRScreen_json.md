@@ -42,13 +42,15 @@ const OCRScreen = () => {
         rate: 1.0,
       });
     }
-
-    const jsonPayload = Json.stringify({
+    console.log("여기까지도 ok");
+    const jsonPayload = JSON.stringify({
       image: photo.base64,
-    })
+    });
+    console.log("base 64 변환 성공");
 
     try{
-      const response = await fetch('https://8cc3-182-172-19-130.ngrok-free.app/ocr/image', {
+      console.log("전송 시도 시작");
+      const response = await fetch('IP주소/ocr/image', {
         method: "POST",
         headers: {
           "Content-Type" : "application/json",
@@ -56,7 +58,7 @@ const OCRScreen = () => {
         body: jsonPayload,
       })
     console.log("전송을 시도합니다");
-
+    console.log("base64 이미지:", photo.base64?.slice(0, 30));
     if (response.ok) {
       const result = await response.json(); // 서버가 JSON 응답을 줄 경우
       console.log('사진 전송 성공:', result);
@@ -125,15 +127,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: '#4FC3F7',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
   },
   text: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
-    color: 'black',
+    color: '#121212',
   },
   OCRresult: {
     position: 'absolute',

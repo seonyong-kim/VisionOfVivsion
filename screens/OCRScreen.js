@@ -1,17 +1,32 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Button, StyleSheet, Touchable, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import { Header } from 'react-native/Libraries/NewAppScreen';
 
-const OCRScreen = () => {
+const OCRScreen = ({route, navigation}) => {
+  //const {rate, pitch} = route.params;
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const [image, setImage] = useState(null);
   const cameraRef = useRef(null);
   const [disabled, SetDisabled] = useState(false); // 버튼 중복 방지를 위해서
+
+  // 문자 인식 진입하면 안내하는 TTS
+  useEffect(() => {
+    console.log("OCR 화면");
+
+    const StartTTS = navigation.addListener("focus", () => {
+      Speech.speak("글자 인식", {
+        //rate: rate,
+        //pitch: pitch
+      });
+    });
+
+    return StartTTS;
+  }, [navigation]);
 
   // 카메라 권한에 필요한 과정
   if (!permission) {
@@ -33,37 +48,46 @@ const OCRScreen = () => {
 
     if(cameraRef.current){
       SetDisabled(true); // 버튼 누르면 버튼 비활성화
-      photo = await cameraRef.current.takePictureAsync({ base64: true });
+      photo = await cameraRef.current.takePictureAsync({ base64: false });
       setImage(photo);
-      //console.log("사진 촬영 결과", photo);
-      console.log("OCR 시작");
+      console.log(`[${new Date().toISOString()}] 📤 전송 시작`);
       Speech.speak("글자 인식을 진행합니다. 잠시만 기다려 주세요.", {
         language: 'ko-KR',
-        rate: 1.0,
+        //rate: rate,
+        //pitch:pitch
       });
     }
-
-    const jsonPayload = Json.stringify({
-      image: photo.base64,
-    })
-
+    
+    const formData = new FormData();
+      formData.append('image', {
+        uri: photo.uri,
+        name: 'OCR.jpg',
+        type: 'image/jpeg',
+      });
+      
     try{
-      const response = await fetch('https://77fca2a7a31c.ngrok-free.app/ocr/image', {
+      const response = await fetch('IP주소/ocr/image', {
         method: "POST",
+        body: formData,
         headers: {
-          "Content-Type" : "application/json",
-        },
-        body: jsonPayload,
+          "Content-Type" : "multipart/form-data",
+        }
       })
-    console.log("전송을 시도합니다");
 
     if (response.ok) {
       const result = await response.json(); // 서버가 JSON 응답을 줄 경우
-      console.log('사진 전송 성공:', result);
-      Speech.speak(result.text || '인식된 글자가 없습니다 다시 시도해 주세요.', {
+      console.log(`[${new Date().toISOString()}] 사진 전송 성공:`, result);
+      Speech.speak(result.translated_text || '인식된 글자가 없습니다 다시 시도해 주세요.', {
           language: 'ko-KR',
+          //rate: rate,
+          //pitch: pitch
         });
     } else {
+      Speech.speak("오류가 발생." + "글자 인식 실패",{
+          language: 'ko-KR',
+          //rate: rate,
+          //pitch:pitch
+        })
       console.warn("서버 응답 실패:", response.status);
       const errorText = await response.text();
       console.warn("서버 응답 내용:", errorText);
@@ -125,15 +149,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#4FC3F7',
+    backgroundColor: '#1e90ff',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
   },
   text: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#121212',
+    color: 'black',
   },
   OCRresult: {
     position: 'absolute',

@@ -3,8 +3,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import SettingScreen from "./SettingScreen";
-import Favorites from "./Favorites";
-import SpeechSetting from "./SpeechSetting";
+import Favorites from "./Favorites"
+import SettingSpeech from "./SettingSpeech";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,12 +18,10 @@ export default function SettingStack() {
       <Stack.Screen
         name="Favorites"
         component={Favorites}
-        options={{ title: "즐겨찾는 장소" }}
       />
       <Stack.Screen
-        name="SpeechSetting"
-        component={SpeechSetting}
-        options={{ title: "즐겨찾는 장소" }}
+        name="SettingSpeech"
+        component={SettingSpeech}
       />
     </Stack.Navigator>
   );

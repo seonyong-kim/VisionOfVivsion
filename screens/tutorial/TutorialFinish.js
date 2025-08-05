@@ -1,16 +1,27 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, BackHandler } from "react-native";
 import * as Speech from "expo-speech";
+import { backGround } from "../../styles/BackGround";
 
-export default function TutorialFinish({ navigation }) {
+export default function TutorialFinish({ route, navigation }) {
+  const {rate, pitch} = route.params;
+
   const guidFinishTTS = async () => {
-    Speech.speak("튜토리얼이 끝났습니다.");
-    Speech.speak("다시듣고 싶으면 설정에서 튜토리얼을 말씀하시면 됩니다.");
-    Speech.speak("메인인 객체 인식을 시작합니다.");
+    Speech.speak("튜토리얼이 끝났습니다."
+      + "다시듣고 싶으면 설정에서 튜토리얼을 말씀하시면 됩니다."
+      + "메인인 객체 인식을 시작합니다.",{
+        rate,
+        pitch
+      }
+    );
 
+    const delay = 9500 * (rate < 1 ? (1 + (1 - rate)) : 1 / (1 + (rate - 1)));   
     setTimeout(() => {
-      navigation.replace("Root");
-    }, 9500);
+      navigation.replace("Root", {
+        rate: rate,
+        pitch : pitch
+      });
+    }, delay);
   };
 
   // 화면이 시작될때 함수가 자동으로 시작되게 하려면
@@ -27,20 +38,13 @@ export default function TutorialFinish({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.mainBackGround}>
+    <View style={[backGround.main,{    alignItems: "center", justifyContent: "center"}]}>
       <Text style={styles.mainText}>튜토리얼 완료</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainBackGround: {
-    flex: 1,
-    backgroundColor: "#121212",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   mainText: {
     fontSize: 60,
     color: "#FFFFFF",

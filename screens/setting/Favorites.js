@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, FlatList } from "react-native";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { text } from "../../styles/Text";
+import * as Speech from "expo-speech";
+import * as SecureStore from 'expo-secure-store'
+import { createIconSetFromFontello } from "@expo/vector-icons";
 
 const Header = () => (
   <View style={styles.header}>
@@ -10,15 +13,15 @@ const Header = () => (
           <MaterialCommunityIcons name="star-outline" size={70} color="#FF8C42" />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.headerText}>즐겨찾기</Text>
+          <Text style={text.header}>즐겨찾기</Text>
         </View>
     </View>
   </View>
 )
 
-{/*하위인 CRID에는 UI관련만 작성, 실제 로직을 알 필요는 없다.
+{/*하위인 CRUD에는 UI관련만 작성, 실제 로직을 알 필요는 없다.
   따라서 함수는 여기에 작성 안한다. */}
-  {/*onAdd를 props로 받아서 onpress에 연결하는 방식으로 Modal을 호출한다.*/}
+  {/*onAdd를 props로 받아서 onPress에 연결하는 방식으로 Modal을 호출한다.*/}
 const CRUD = ({onAdd}) => (
   <View style={styles.CRUD}>
     <View style={styles.row}>
@@ -40,73 +43,89 @@ const CRUD = ({onAdd}) => (
   </View>
 )
 
-const EditModal = ({visible, onClose, onSave, onDelete, name, setName, address, setAddress}) => (
+const EditModal = ({visible, onClose, onSave, onDelete, name, setName, address, setAddress}) => {
+  useEffect(() => {
+    if (visible) {
+      // 모달이 열릴 때 한 번만 실행
+      Speech.speak(`주소는 ${address}`);
+    }
+  }, [visible]);
   // 외부에 따로 정의한다면 
   // 모달 창을 띄우고
   // 여기에 위에 정보를 띄우고 밑에 수정 버튼과 삭제 버튼을 만든다.
-  <Modal
-  visible={visible}
-  transparent
-  animationType="slide">
-    <View style={styles.modalBackground}>
-      <View style={styles.modal}>
-        <Text style={{fontSize:45, textAlign:'center', color:'#FFFFFF'}}>이름</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={name}
-            onChangeText={setName}
-            multiline={true}
-          />
+  return(
+    <Modal
+    visible={visible}
+    transparent
+    animationType="slide">
+     <View style={styles.modalBackground}>
+       <View style={styles.modal}>
+          <Text style={{fontSize:45, textAlign:'center', color:'#FFFFFF'}}>이름</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={name}
+              onChangeText={setName}
+              multiline={true}
+            />
 
-        <Text style={{fontSize:45, textAlign:'center', color:'#FFFFFF'}}>주소</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={address}
-            onChangeText={setAddress}
-            multiline={true}
-            color='#FFFFFF'
-          />
+          <Text style={{fontSize:45, textAlign:'center', color:'#FFFFFF'}}>주소</Text>
+           <TextInput
+             style={styles.modalInput}
+             value={address}
+             onChangeText={setAddress}
+             multiline={true}
+             color='#FFFFFF'
+           />
 
-        <View style={styles.row}>
-          <TouchableOpacity onPress={onSave} 
-            style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
-            <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>수정</Text>
-          </TouchableOpacity>
+         <View style={styles.row}>
+           <TouchableOpacity onPress={onSave} 
+             style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
+             <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>수정</Text>
+           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onDelete} 
-          style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
-            <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>삭제</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={onDelete} 
+           style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
+             <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>삭제</Text>
+           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onClose} 
-          style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
-            <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>닫기</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} 
+           style={{ flex:1, justifyContent: "center", alignItems: 'center'}}>
+             <Text style={{ fontSize: 35, color: '#FFFFFF', textAlign: 'center' }}>닫기</Text>
+           </TouchableOpacity>
+         </View>  
+
         </View>
+     </View>
+   </Modal>
+)};
 
-      </View>
-    </View>
-  </Modal>
-);
-
-const FavoritesList = ({favoriteList, onItemPress}) => (
+const FavoritesList = ({favoriteList, onItemPress}) => {
   // 1. Favorites 컴포넌트에서 favoriteList 상태를 FavoritesList에 props로 넘긴다
   // 2. FavoritesList 컴포넌트는 favoriteList를 받아서 FlatList로 렌더링
   // 3. FlatList는 data prop에 배열 주고, renderItem prop에 각 아이템을 어떻게 보여줄지 함수 주기
   // 4. FlatList에 한 화면에 몇 개씩 보여줄지, 스크롤할 수 있게 설정하기
   // 만약에 버튼으로 눌렀을 때 해당 정보가 뜨게 하려면 다르게 해야하나?
+  
+  if (!Array.isArray(favoriteList) || favoriteList.length === 0) {
+    return null; // 아무것도 렌더링하지 않음
+  }
 
-  <FlatList
-    data={favoriteList}
-    keyExtractor={item => item.id.toString()}
-    renderItem={({item}) => (
-      <TouchableOpacity style={styles.favoriteListButton} onPress={() => onItemPress(item)}>
-        <Text style={styles.favoriteName}>{item.name}</Text>
-        <Text style={styles.favoriteAddress}>{item.address}</Text>
-      </TouchableOpacity>
-    )}
-  />
-);
+  return (
+    <FlatList
+      data={favoriteList}
+      keyExtractor={item => item.favorite_id.toString()}
+      renderItem={({item}) => (
+        <TouchableOpacity 
+          style={styles.favoriteListButton} 
+          onPress={() => onItemPress(item)}
+        >
+          <Text style={styles.favoriteName}>{item.name}</Text>
+          <Text style={styles.favoriteAddress}>{item.address}</Text>
+        </TouchableOpacity>
+      )}
+    />
+  )
+};
 
 const AddModal = ({ visible, onClose, onSave, name, setName, address, setAddress }) => (
   <Modal 
@@ -173,8 +192,13 @@ const Favorites = () => {
   // 다음으로 useEffect로 처음에 화면에 뜨게 설정
   // 버튼을 누를때마다(추가, 삭제, 수정)반영시킨 DB를 가져오도록 설정
   // FlatList로 출력 
+
+  // get을 하기 위한 함수로 useEffect를 통해 화면에 출력한다.
   const getFavoriteList = async() =>{
-    const response = await fetch('https://c5fc-165-246-144-10.ngrok-free.app/setting/favorites',{
+    const deviceId = await SecureStore.getItemAsync('deviceId');
+    const url = `IP주소/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
+
+    const response = await fetch(url,{
       method:"GET",
       headers:{
         "Content-Type" : "application/json"
@@ -192,12 +216,15 @@ const Favorites = () => {
   }
 
   useEffect(() => {
+    Speech.speak("즐겨찾기");
     getFavoriteList();
   }, []);
 
+  // 새로 저장관련 함수이다 post를 이용해 새로 저장
   const handleSave = async() =>{
-    if(disabled)
+    if(disabled){
       return;
+    }
 
     setDisabled(true);
     // name과 address가 비어있는지 확인
@@ -207,45 +234,54 @@ const Favorites = () => {
       return
     }
     // 서버로 전송하기
-    const response = await fetch('https://c5fc-165-246-144-10.ngrok-free.app/setting/favorites', {
+    const deviceId = await SecureStore.getItemAsync('deviceId');
+    console.log("2-3 다바이스 정보 얻고");
+    const response = await fetch('IP주소/setting/favorites', {
       method: "POST",
       headers:{
         "Content-Type" : "application/json",
       },
       body: JSON.stringify({
+        deviceId: deviceId,
         name: name,
         address: address,
       }),
     })
+
     // 전송 성공하면 빈값으로
     if(response.ok){
       await getFavoriteList();
       setName('');
       setAddress('');
       setDisabled(false);
+      Speech.speak("추가 성공")
     }else{
-      alert('추가에 실패했습니다.')
+      Speech.speak("추가 실패")
     }
     setIsModalVisible(false)
   }
 
+  // 수정을 위한 함수 PUT 이용
   const handleChange = async() =>{
+    const deviceId = await SecureStore.getItemAsync('deviceId');
     if(editName === '' || editAddress === ''){
       alert('이름과 주소를 모두 입력해주세요!')
       setDisabled(false);
       return
     }
     // 서버로 전송하기
-    const response = await fetch(`https://c5fc-165-246-144-10.ngrok-free.app/setting/favorites/${selectedItem.id}`, {
+    const response = await fetch(`IP주소/setting/favorites/${selectedItem.favorite_id}`, {
       method: "PUT",
       headers:{
         "Content-Type" : "application/json",
       },
       body: JSON.stringify({
+        device_id: deviceId,
         name: editName,
         address: editAddress,
       }),
     })
+
     // 전송 성공하면 빈값으로
     if(response.ok){
       await getFavoriteList();
@@ -253,33 +289,46 @@ const Favorites = () => {
       setEditAddress('');
       setSelectedItem(null);
       setDisabled(false);
+      Speech.speak("수정완료");
     }else{
-      alert('변경에 실패하였습니다.')
+      Speech.speak("수정 실패");
     }
     setIsEditModalVisible(false)
   }
 
+  // 삭제를 위한 함수로 delete이용
   const handleDelete = async() => {
+    const deviceId = await SecureStore.getItemAsync('deviceId');
     // 서버로 전송하기
-    const response = await fetch(`https://c5fc-165-246-144-10.ngrok-free.app/setting/favorites/${selectedItem.id}`, {
-      method: "DELETE",
-      headers:{
-        "Content-Type" : "application/json",
-      }
-    })
-    if(response.ok){
-      await getFavoriteList();
-      setEditName('');
-      setEditAddress('');
-      setSelectedItem(null);
-      setDisabled(false);
-    }else{
-      alert('삭제에 실패하였습니다.')
+    try{
+      const response = await fetch(`IP주소/setting/favorites/${selectedItem.favorite_id}`, {
+        method: "DELETE",
+        headers:{
+          "Content-Type" : "application/json",
+          "Device-ID": deviceId
+        }
+      });
+
+      if(response.ok){
+        console.log("된건가?");
+        await getFavoriteList();
+        setEditName('');
+        setEditAddress('');
+        setSelectedItem(null);
+        setDisabled(false);
+        Speech.speak("삭제 성공");
+      }else{
+        Speech.speak('삭제 실패')
+     }
+    }catch(err){
+      console.log("err임", err);
+    }finally{
+      setIsEditModalVisible(false)
     }
-    setIsEditModalVisible(false)
   }
 
   const onPressModalOpen = () =>{
+    Speech.speak("추가")
     setIsModalVisible(true)
   }
 
@@ -337,11 +386,6 @@ const styles = StyleSheet.create({
   header: {
     flex: 1,
     justifyContent: "center",
-  },
-  headerText: {
-    textAlign: "center",
-    fontSize: 60,
-    color: "#FF8C42",
   },
   CRUD: {
     flex: 1,
@@ -429,12 +473,6 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   favoriteListButton: {
-    /* 1안
-    color:'#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#4FC3F7', 
-    borderRadius: 8,
-    */
     backgroundColor:'#2C2C2C',
     color:'#FFFFFF',
     borderWidth: 2,
