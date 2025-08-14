@@ -13,6 +13,8 @@ export default function StartSpeechSetting({navigation}){
     Speech.speak("속도와 높낮이 조절이 가능합니다.");
     Speech.speak("속도 설정은 속도! 업! 다운! 으로 설정 가능하고");
     Speech.speak("높낮이 역시 설정은 높낮이! 업! 다운! 으로 설정가능합니다.");
+    Speech.speak("테스트 버튼을 누르거나 테스트라고 말씀하시면 음성 테스트가 가능합니다.");
+    Speech.speak("저장 버튼을 누르거나 저장이라고 말씀하시면 설정이 저장됩니다.");
   }
 
   const nextButton = (changeRate, changePitch) =>{

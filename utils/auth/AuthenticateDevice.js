@@ -4,7 +4,7 @@ export const authenticateDevice = async () => {
     console.log("3 인증 시작");
     // 토큰없이 deviceId로 인증 시작
     const deviceId = await getDeviceId();
-    const response = await fetch('IP주소/auth/deviceId',{
+    const response = await fetch('http://3.37.7.103:5006/auth/deviceId',{
         method: 'POST',
         headers:{
             'Content-Type': 'application/json'

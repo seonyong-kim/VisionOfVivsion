@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, FlatList } from "react-native";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useIsFocused } from "@react-navigation/native";
 import { text } from "../../styles/Text";
 import * as Speech from "expo-speech";
 import * as SecureStore from 'expo-secure-store'
-import { createIconSetFromFontello } from "@expo/vector-icons";
+import { useAutoSTT } from "../../src/services/useAutoSTT";
 
 const Header = () => (
   <View style={styles.header}>
@@ -196,7 +197,7 @@ const Favorites = () => {
   // get을 하기 위한 함수로 useEffect를 통해 화면에 출력한다.
   const getFavoriteList = async() =>{
     const deviceId = await SecureStore.getItemAsync('deviceId');
-    const url = `IP주소/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
+    const url = `http://3.37.7.103:5010/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
 
     const response = await fetch(url,{
       method:"GET",
@@ -236,7 +237,7 @@ const Favorites = () => {
     // 서버로 전송하기
     const deviceId = await SecureStore.getItemAsync('deviceId');
     console.log("2-3 다바이스 정보 얻고");
-    const response = await fetch('IP주소/setting/favorites', {
+    const response = await fetch('http://3.37.7.103:5010/setting/favorites', {
       method: "POST",
       headers:{
         "Content-Type" : "application/json",
@@ -270,7 +271,7 @@ const Favorites = () => {
       return
     }
     // 서버로 전송하기
-    const response = await fetch(`IP주소/setting/favorites/${selectedItem.favorite_id}`, {
+    const response = await fetch(`http://3.37.7.103:5010/setting/favorites/${selectedItem.favorite_id}`, {
       method: "PUT",
       headers:{
         "Content-Type" : "application/json",
@@ -301,7 +302,7 @@ const Favorites = () => {
     const deviceId = await SecureStore.getItemAsync('deviceId');
     // 서버로 전송하기
     try{
-      const response = await fetch(`IP주소/setting/favorites/${selectedItem.favorite_id}`, {
+      const response = await fetch(`http://3.37.7.103:5010/setting/favorites/${selectedItem.favorite_id}`, {
         method: "DELETE",
         headers:{
           "Content-Type" : "application/json",

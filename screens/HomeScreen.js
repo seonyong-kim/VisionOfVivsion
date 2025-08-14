@@ -6,9 +6,10 @@ import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import io from 'socket.io-client';
 import * as Speech from 'expo-speech';  // ← 상단에 추가
 import { LoadSpeechInfo } from "../utils/speech/LoadSpeechInfo";
+import { useAutoSTT } from '../src/services/useAutoSTT';
 
 const { width: previewWidth, height: previewHeight } = Dimensions.get('window');
-const SERVER_URL = 'IP주소';  // 본인 서버 IP:포트
+const SERVER_URL = 'http://3.37.7.103:5000';  // 본인 서버 IP:포트
 
 export default function HomeScreen({navigation}) {
   const [rate, setRate] = useState(1.0);
@@ -23,6 +24,26 @@ export default function HomeScreen({navigation}) {
   const [detections, setDetections] = useState([]);
   const [photoSize, setPhotoSize] = useState({ width: 1, height: 1 });
   const [frameReady, setFrameReady] = useState(true);
+
+  // STT
+    useAutoSTT({
+    endpoint: "http://10.43.139.2:5002/stt",
+    segmentMs: 5000,
+    enabled: isFocused,
+    onResult: ({ text }) => {
+      if (!text) return;
+      const cmd = text.trim();
+      console.log("🎤 인식:", cmd);
+  
+      if (cmd.includes("글자")) {
+        navigation.navigate("OCR");
+      } else if (cmd.includes("길 찾기")) {
+        navigation.navigate("Navigation");
+      } else if (cmd.includes("설정")) {
+        navigation.navigate("Setting");
+      }
+    }
+  });
 
   // 음성 설정 useEffect 먼저 설정을 위해서
   useEffect(() => {

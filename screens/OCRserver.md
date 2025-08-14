@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Button, StyleSheet, Touchable, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
-import { useAutoSTT } from '../src/services/useAutoSTT';
 import * as Speech from 'expo-speech';
+import { Header } from 'react-native/Libraries/NewAppScreen';
 
 const OCRScreen = ({route, navigation}) => {
   //const {rate, pitch} = route.params;
@@ -12,7 +12,6 @@ const OCRScreen = ({route, navigation}) => {
   const isFocused = useIsFocused();
   const [image, setImage] = useState(null);
   const cameraRef = useRef(null);
-  const [sttOn, setSttOn] = useState(true);
   const [disabled, SetDisabled] = useState(false); // 버튼 중복 방지를 위해서
 
   // 문자 인식 진입하면 안내하는 TTS
@@ -29,37 +28,22 @@ const OCRScreen = ({route, navigation}) => {
     return StartTTS;
   }, [navigation]);
 
-  useAutoSTT({
-  endpoint: "http://3.37.7.103:5012/stt",
-  segmentMs: 5000,
-  enabled: isFocused,
-  onResult: ({ text }) => {
-    if (!text) return;
-    const cmd = text.trim();
-    console.log("인식:", cmd);
-
-    // STT를 잠깐 끄고 
-    setSttOn(false);
-    Speech.stop();
-
-    if (cmd.includes("객체")) {
-      Speech.speak("객체 인식");
-      navigation.navigate("Home");
-    } else if (cmd.includes("길")) {
-      Speech.speak("길 찾기"); 
-      navigation.navigate("Navigation");
-    } else if (cmd.includes("설정")) {
-      Speech.speak("설정");
-      navigation.navigate("Setting");
-    } else if (cmd.includes("시작")) {
-      takePicture();
-    }
+  // 카메라 권한에 필요한 과정
+  if (!permission) {
+    return <View />;
   }
-});
 
-  // 사진 찍는 함수
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>카메라 권한이 필요합니다.</Text>
+        <Button onPress={requestPermission} title="권한 허용" />
+      </View>
+    );
+  }
+
+// 사진 찍는 함수
   const takePicture = async() =>{
-    console.log("OCR 시작");
     let photo = null;
 
     if(cameraRef.current){
@@ -112,21 +96,6 @@ const OCRScreen = ({route, navigation}) => {
       console.error("OCR 업로드 실패:", error);
     }
     SetDisabled(false); // 결과 출력되면 버튼 활성화
-  };
-
-  
-  // 카메라 권한에 필요한 과정
-  if (!permission) {
-    return <View />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>카메라 권한이 필요합니다.</Text>
-        <Button onPress={requestPermission} title="권한 허용" />
-      </View>
-    );
   }
 
   // 화면 구성

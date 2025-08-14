@@ -6,7 +6,7 @@ export const LoadSpeechInfo = async (setRate, setPitch) => {
     const deviceId = await SecureStore.getItemAsync('deviceId');
 
     // 서버로 전송 get은 데이터를 쿼리 스트링으로 넘긴다.
-    const url = `IP주소/setting/speech?device_id=${encodeURIComponent(deviceId)}`;
+    const url = `http://3.37.7.103:5008/setting/speech?device_id=${encodeURIComponent(deviceId)}`;
     try{
         const response = await fetch(url,{
             method: "GET",

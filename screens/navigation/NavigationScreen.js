@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { getCurrentPositionAsync, requestForegroundPermissionsAsync } from 'expo-location';
 import { speakText } from '../../utils/tts';
 import { startSTT } from '../../utils/stt';
 import { reverseGeocode, geocode } from '../../utils/navigation/tmap';
+import { useAutoSTT } from '../../src/services/useAutoSTT';
+import * as Speech from 'expo-speech';
 
 export default function NavigationScreen({ navigation }) {
   const [currentLocation, setCurrentLocation] = useState(null);
@@ -13,6 +15,34 @@ export default function NavigationScreen({ navigation }) {
   const [destinationInput, setDestinationInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const isFocused = useIsFocused();
+  const [sttOn, setSttOn] = useState(true);
+
+  useAutoSTT({
+      endpoint: "http://3.37.7.103:5012/stt",
+      segmentMs: 5000,
+      enabled: isFocused,
+  onResult: ({ text }) => {
+    if (!text) return;
+    const cmd = text.trim();
+    console.log("인식:", cmd);
+
+    // STT를 잠깐 끄고 
+    setSttOn(false);
+    Speech.stop();
+
+    if (cmd.includes("객체")) {
+      Speech.speak("객체 인식");
+      navigation.navigate("Home");
+    } else if (cmd.includes("글자")) {
+      Speech.speak("글자 인식");
+      navigation.navigate("OCR");
+    } else if (cmd.includes("설정")) {
+      Speech.speak("설정");
+      navigation.navigate("Setting");
+    }
+  }
+});
 
   const fetchLocation = async () => {
     try {
