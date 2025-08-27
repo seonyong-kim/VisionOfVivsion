@@ -33,7 +33,8 @@
     "react-native-webview": "13.13.5",
     "socket.io-client": "^4.8.1",
     "uuid": "^11.1.0",
-    "expo-av": "~15.1.7"
+    "expo-av": "~15.1.7",
+    "expo-image-manipulator": "~13.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
