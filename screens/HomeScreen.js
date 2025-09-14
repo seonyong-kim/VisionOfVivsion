@@ -1,14 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Text, TextInput, TouchableOpacity } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useIsFocused } from '@react-navigation/native';
-import Svg, { Rect, Text as SvgText } from 'react-native-svg';
-import io from 'socket.io-client';
-import * as Speech from 'expo-speech';
-import * as ImageManipulator from 'expo-image-manipulator';
+// screens/HomeScreen.js
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  Text,
+  TextInput,
+  TouchableOpacity,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useIsFocused } from "@react-navigation/native";
+import Svg, { Rect, Text as SvgText } from "react-native-svg";
+import io from "socket.io-client";
+import * as Speech from "expo-speech";
+import * as ImageManipulator from "expo-image-manipulator";
 
-const { width: previewWidth, height: previewHeight } = Dimensions.get('window');
-const SERVER_URL = 'http://3.37.7.103:5000'; // 본인 서버 IP:포트
+const { width: previewWidth, height: previewHeight } = Dimensions.get("window");
+const SERVER_URL = "http://192.168.0.23:5000"; // 본인 서버 IP:포트
 
 export default function HomeScreen() {
   const cameraRef = useRef(null);
@@ -24,26 +32,29 @@ export default function HomeScreen() {
   const [classNames, setClassNames] = useState([]);
 
   // 🔍 입력/타깃
-  const [targetInput, setTargetInput] = useState('');
-  const [targetClass, setTargetClass] = useState(''); // 비어있으면 일반 모드
+  const [targetInput, setTargetInput] = useState("");
+  const [targetClass, setTargetClass] = useState(""); // 비어있으면 일반 모드
 
   // 🔊 중복 발화 방지
   const lastSpeakRef = useRef(0);
-  const lastGroupsRef = useRef({ left: '', right: '' });
+  const lastGroupsRef = useRef({ left: "", right: "" });
 
   // 1) Socket.IO 초기화
   useEffect(() => {
-    const sock = io(SERVER_URL, { transports: ['websocket'], reconnection: true });
+    const sock = io(SERVER_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+    });
     socketRef.current = sock;
 
-    sock.on('connect',    () => console.log('✅ Socket connected'));
-    sock.on('disconnect', () => console.log('❌ Socket disconnected'));
-    sock.on('detection',  data => setDetections(data || []));
+    sock.on("connect", () => console.log("✅ Socket connected"));
+    sock.on("disconnect", () => console.log("❌ Socket disconnected"));
+    sock.on("detection", (data) => setDetections(data || []));
     // ⬇️ 서버가 connect 시 내려주는 클래스 목록
-    sock.on('class_names', payload => {
+    sock.on("class_names", (payload) => {
       const arr = payload?.classes || [];
       setClassNames(arr.map(String));
-      console.log('📚 YOLO classes:', arr);
+      console.log("📚 YOLO classes:", arr);
     });
 
     return () => sock.disconnect();
@@ -65,15 +76,15 @@ export default function HomeScreen() {
 
         setPhotoSize({ width: photo.width, height: photo.height });
 
-        const imgData = 'data:image/jpeg;base64,' + photo.base64;
-        socketRef.current.emit('image', {
+        const imgData = "data:image/jpeg;base64," + photo.base64;
+        socketRef.current.emit("image", {
           image: imgData,
           width: photo.width,
           height: photo.height,
         });
-        console.log('📤 Frame sent');
+        console.log("📤 Frame sent");
       } catch (e) {
-        console.error('🚫 sendFrame error', e);
+        console.error("🚫 sendFrame error", e);
       } finally {
         setTimeout(() => setFrameReady(true), 1000);
       }
@@ -88,12 +99,12 @@ export default function HomeScreen() {
 
     const scaleX = previewWidth / photoSize.width;
     const centerX = previewWidth / 2;
-    const norm = s => (s || '').trim().toLowerCase();
+    const norm = (s) => (s || "").trim().toLowerCase();
 
     const visible = targetClass
-      ? detections.filter(d => {
+      ? detections.filter((d) => {
           const name = norm(d.class_name);
-          const tgt  = norm(targetClass);
+          const tgt = norm(targetClass);
           return name === tgt || name.includes(tgt);
         })
       : detections;
@@ -111,30 +122,33 @@ export default function HomeScreen() {
     const leftArr = Array.from(leftSet);
     const rightArr = Array.from(rightSet);
 
-    const leftStr = leftArr.join(',');
-    const rightStr = rightArr.join(',');
+    const leftStr = leftArr.join(",");
+    const rightStr = rightArr.join(",");
 
     const now = Date.now();
     const cooldownMs = 2500;
     const contentChanged =
-      leftStr !== lastGroupsRef.current.left || rightStr !== lastGroupsRef.current.right;
+      leftStr !== lastGroupsRef.current.left ||
+      rightStr !== lastGroupsRef.current.right;
     const timeOk = now - lastSpeakRef.current > cooldownMs;
 
     if ((leftArr.length || rightArr.length) && contentChanged && timeOk) {
-      let msg = '';
+      let msg = "";
       if (leftArr.length > 0 && rightArr.length > 0) {
-        msg = `왼쪽에는 ${leftArr.join(', ')} 있고, 오른쪽에는 ${rightArr.join(', ')} 있습니다.`;
+        msg = `왼쪽에는 ${leftArr.join(", ")} 있고, 오른쪽에는 ${rightArr.join(
+          ", "
+        )} 있습니다.`;
       } else if (leftArr.length > 0) {
-        msg = `왼쪽에 ${leftArr.join(', ')} 있습니다.`;
+        msg = `왼쪽에 ${leftArr.join(", ")} 있습니다.`;
       } else if (rightArr.length > 0) {
-        msg = `오른쪽에 ${rightArr.join(', ')} 있습니다.`;
+        msg = `오른쪽에 ${rightArr.join(", ")} 있습니다.`;
       }
 
       if (msg) {
         try {
           Speech.stop();
-          Speech.speak(msg, { language: 'ko-KR', pitch: 1.0, rate: 2.0 }); // ✅ 2배속
-          console.log('🗣️ speak:', msg);
+          Speech.speak(msg, { language: "ko-KR", pitch: 1.0, rate: 2.0 }); // ✅ 2배속
+          console.log("🗣️ speak:", msg);
         } catch {}
         lastSpeakRef.current = now;
         lastGroupsRef.current = { left: leftStr, right: rightStr };
@@ -162,8 +176,13 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.btn}
           onPress={() => {
-            try { Speech.stop(); } catch {}
-            Speech.speak('찾을 대상을 입력해 주세요.', { language: 'ko-KR', rate: 2.0 });
+            try {
+              Speech.stop();
+            } catch {}
+            Speech.speak("찾을 대상을 입력해 주세요.", {
+              language: "ko-KR",
+              rate: 2.0,
+            });
           }}
         >
           <Text style={styles.btnTxt}>찾기</Text>
@@ -181,20 +200,32 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={[styles.btn, styles.btnConfirm]}
           onPress={() => {
-            const want = (targetInput || '').trim().toLowerCase();
+            const want = (targetInput || "").trim().toLowerCase();
             if (!want) return;
 
             // ✅ 서버에서 받은 클래스 목록으로 검증 (부분일치 허용)
-            const candidates = classNames.filter(c => c.toLowerCase().includes(want));
+            const candidates = classNames.filter((c) =>
+              c.toLowerCase().includes(want)
+            );
             if (candidates.length === 0) {
-              try { Speech.stop(); } catch {}
-              Speech.speak('모델에 없는 클래스라서 찾을 수 없습니다.', { language: 'ko-KR', rate: 2.0 });
+              try {
+                Speech.stop();
+              } catch {}
+              Speech.speak("모델에 없는 클래스라서 찾을 수 없습니다.", {
+                language: "ko-KR",
+                rate: 2.0,
+              });
               return;
             }
             const chosen = candidates[0];
             setTargetClass(chosen);
-            try { Speech.stop(); } catch {}
-            Speech.speak(`${chosen}를 찾는 중입니다.`, { language: 'ko-KR', rate: 2.0 });
+            try {
+              Speech.stop();
+            } catch {}
+            Speech.speak(`${chosen}를 찾는 중입니다.`, {
+              language: "ko-KR",
+              rate: 2.0,
+            });
           }}
         >
           <Text style={styles.btnTxt}>확인</Text>
@@ -203,10 +234,15 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={[styles.btn, styles.btnClear]}
           onPress={() => {
-            setTargetClass('');
-            setTargetInput('');
-            try { Speech.stop(); } catch {}
-            Speech.speak('찾기를 종료하고 일반 안내로 돌아갑니다.', { language: 'ko-KR', rate: 2.0 });
+            setTargetClass("");
+            setTargetInput("");
+            try {
+              Speech.stop();
+            } catch {}
+            Speech.speak("찾기를 종료하고 일반 안내로 돌아갑니다.", {
+              language: "ko-KR",
+              rate: 2.0,
+            });
           }}
         >
           <Text style={styles.btnTxt}>취소</Text>
@@ -256,27 +292,46 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
-  camera:    { flex: 1 },
+  container: { flex: 1, backgroundColor: "#121212" },
+  camera: { flex: 1 },
 
   center: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212',
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#121212",
   },
-  link: { fontSize: 18, color: '#4FC3F7', textDecorationLine: 'underline' },
+  link: { fontSize: 18, color: "#4FC3F7", textDecorationLine: "underline" },
 
   searchBar: {
-    position: 'absolute', zIndex: 10, top: 10, left: 10, right: 10,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    position: "absolute",
+    zIndex: 10,
+    top: 10,
+    left: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   input: {
-    flex: 1, height: 40, backgroundColor: '#1e1e1e', color: '#fff',
-    borderRadius: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: '#333',
+    flex: 1,
+    height: 40,
+    backgroundColor: "#1e1e1e",
+    color: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#333",
   },
   btn: {
-    paddingHorizontal: 12, height: 40, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#2e7d32',
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2e7d32",
   },
-  btnConfirm: { backgroundColor: '#3367d6' },
-  btnClear:   { backgroundColor: '#9e2a2a' },
-  btnTxt:     { color: '#fff', fontWeight: 'bold' },
+  btnConfirm: { backgroundColor: "#3367d6" },
+  btnClear: { backgroundColor: "#9e2a2a" },
+  btnTxt: { color: "#fff", fontWeight: "bold" },
 });
