@@ -3,10 +3,7 @@
     "name": "todo-app",
     "slug": "todo-app",
     "version": "1.0.0",
-    "assetBundlePatterns": [
-      "images/*",
-      "assets/**/*"
-    ],
+    "assetBundlePatterns": ["images/*", "assets/**/*"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

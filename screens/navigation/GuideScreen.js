@@ -1,70 +1,78 @@
-// 실시간 카메라 + YOLO로 위험 감지 → 위험 텍스트 & 진동 & TTS
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Vibration,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as Location from "expo-location";
+import OverlayWarning from "../../components/navigation/OverlayWarning";
+import { speakText } from "../../utils/tts";
+import * as Speech from "expo-speech";
+import { fetchPedestrianRoute } from "../../utils/navigation/tmap";
+import { TMAP_API_KEY } from "@env";
+import * as SecureStore from "expo-secure-store";
+import { useIsFocused } from "@react-navigation/native";
+import { Dimensions } from "react-native";
+import Svg, { Rect, Text as SvgText } from "react-native-svg";
+import io from "socket.io-client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Vibration, ActivityIndicator, Alert } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Location from 'expo-location';
-import OverlayWarning from '../../components/navigation/OverlayWarning';
-import { speakText } from '../../utils/tts';
-import * as Speech from 'expo-speech';
-import { fetchPedestrianRoute } from '../../utils/navigation/tmap';
-import { TMAP_API_KEY } from '@env';
-import * as SecureStore from 'expo-secure-store';
+const { width: previewWidth, height: previewHeight } = Dimensions.get("window");
+const SERVER_URL = "서버IP";
 
-// [YOLO 추가 import]
-import { useIsFocused } from '@react-navigation/native';
-import { Dimensions } from 'react-native';
-import Svg, { Rect, Text as SvgText } from 'react-native-svg';
-import io from 'socket.io-client';
-
-const { width: previewWidth, height: previewHeight } = Dimensions.get('window');
-const SERVER_URL = 'http://3.37.7.103:5004'; // 서버 IP:포트
-
-// ✅ 보조(ASSIST) 세트 — coco 테스트용 tv 임시 포함 (원하면 제거 가능)
 const ASSIST_SET = new Set([
-  'bluesignal', 'crosswalk', 'redsignal', 'braille block',
-  'tv',
+  "bluesignal",
+  "crosswalk",
+  "redsignal",
+  "braille block",
+  "tv",
 ]);
 
 const GuideScreen = ({ route, navigation }) => {
-  // RouteScreen에서 전달받은 파라미터들
-  const { currentLocation, destination, destinationCoords, duration, distance } = route.params || {};
+  const {
+    currentLocation,
+    destination,
+    destinationCoords,
+    duration,
+    distance,
+  } = route.params || {};
 
-  // 위험 시뮬레이터(기존)
   const [danger, setDanger] = useState(false);
-  const [label, setLabel] = useState('');
+  const [label, setLabel] = useState("");
 
-  // 카메라/안내 상태
   const [cameraReady, setCameraReady] = useState(false);
   const [lastSentLocation, setLastSentLocation] = useState(null);
-  const [pointDescription, setPointDescription] = useState('');
+  const [pointDescription, setPointDescription] = useState("");
   const [guidePoints, setGuidePoints] = useState([]);
   const [announcedPoints, setAnnouncedPoints] = useState({});
   const [isNavigatingHome, setIsNavigatingHome] = useState(false);
   const [nextPointDistance, setNextPointDistance] = useState(null);
   const [destinationDistance, setDestinationDistance] = useState(null);
 
-  // 헤딩(방위) 안내용
   const [heading, setHeading] = useState(null);
   const [bearingToDestination, setBearingToDestination] = useState(null);
   const [relativeAngle, setRelativeAngle] = useState(null);
   const headingSubRef = useRef(null);
   const lastHeadingSpokenAtRef = useRef(0);
 
-  // 안내 포인트 관리 ref
   const guidePointsRef = useRef([]);
   const announcedPointsRef = useRef({});
   const prevMinDistRef = useRef(null);
   const prevClosestPointRef = useRef(null);
   const isRecalculatingRef = useRef(false);
 
-  useEffect(() => { guidePointsRef.current = guidePoints; }, [guidePoints]);
-  useEffect(() => { announcedPointsRef.current = announcedPoints; }, [announcedPoints]);
+  useEffect(() => {
+    guidePointsRef.current = guidePoints;
+  }, [guidePoints]);
+  useEffect(() => {
+    announcedPointsRef.current = announcedPoints;
+  }, [announcedPoints]);
 
-  // 카메라 권한
   const [permission, requestPermission] = useCameraPermissions();
-
-  // ✅ YOLO 통합 상태/참조
   const cameraRef = useRef(null);
   const socketRef = useRef(null);
   const isFocused = useIsFocused();
@@ -74,27 +82,29 @@ const GuideScreen = ({ route, navigation }) => {
   const [warningVisible, setWarningVisible] = useState(false);
   const ttsTimerRef = useRef(null);
 
-  // 🔊 직전에 말한 문장 저장 (중복 발화 방지)
-  const lastSpokenMsgRef = useRef('');
+  const lastSpokenMsgRef = useRef("");
 
-  // 즐겨찾기 중복 체크 (기존 로직 유지)
   const checkIfAlreadyInFavorites = async (address) => {
     try {
-      const deviceId = await SecureStore.getItemAsync('deviceId');
-      const url = `http://3.37.7.103:5010/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
-      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      const deviceId = await SecureStore.getItemAsync("deviceId");
+      const url = `서버IP/setting/favorites?device_id=${encodeURIComponent(
+        deviceId
+      )}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
       if (response.ok) {
         const favorites = await response.json();
-        return favorites.some(fav => fav.address === address);
+        return favorites.some((fav) => fav.address === address);
       }
       return false;
     } catch (error) {
-      console.error('즐겨찾기 확인 실패:', error);
+      console.error("즐겨찾기 확인 실패:", error);
       return false;
     }
   };
 
-  // === 경로/포인트 안내 (기존 유지) ===
   useEffect(() => {
     let intervalId;
     let isMounted = true;
@@ -102,7 +112,7 @@ const GuideScreen = ({ route, navigation }) => {
     const fetchRouteOnce = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== "granted") return;
         const loc = await Location.getCurrentPositionAsync({});
         const coords = loc.coords;
         setLastSentLocation(coords);
@@ -111,11 +121,20 @@ const GuideScreen = ({ route, navigation }) => {
         const endX = destinationCoords ? destinationCoords.longitude : 126.95;
         const endY = destinationCoords ? destinationCoords.latitude : 37.384;
 
-        const data = await fetchPedestrianRoute(startX, startY, endX, endY, '출발지', destination || '도착지');
+        const data = await fetchPedestrianRoute(
+          startX,
+          startY,
+          endX,
+          endY,
+          "출발지",
+          destination || "도착지"
+        );
         if (data && Array.isArray(data.features)) {
           const points = data.features
-            .filter(f => f.geometry?.type === 'Point' && f.properties?.description)
-            .map(f => ({
+            .filter(
+              (f) => f.geometry?.type === "Point" && f.properties?.description
+            )
+            .map((f) => ({
               description: f.properties.description,
               latitude: f.geometry.coordinates[1],
               longitude: f.geometry.coordinates[0],
@@ -123,65 +142,93 @@ const GuideScreen = ({ route, navigation }) => {
           setGuidePoints(points);
         }
       } catch (e) {
-        console.error('경로 요청 실패:', e);
+        console.error("경로 요청 실패:", e);
       }
     };
 
-    // 헤딩 구독
     (async () => {
       try {
         let perm = await Location.getForegroundPermissionsAsync();
-        if (perm.status !== 'granted') perm = await Location.requestForegroundPermissionsAsync();
-        if (perm.status !== 'granted') return;
-        headingSubRef.current = await Location.watchHeadingAsync(h => {
-          const deg = (Number.isFinite(h.trueHeading) && h.trueHeading >= 0) ? h.trueHeading : h.magHeading;
+        if (perm.status !== "granted")
+          perm = await Location.requestForegroundPermissionsAsync();
+        if (perm.status !== "granted") return;
+        headingSubRef.current = await Location.watchHeadingAsync((h) => {
+          const deg =
+            Number.isFinite(h.trueHeading) && h.trueHeading >= 0
+              ? h.trueHeading
+              : h.magHeading;
           if (deg != null && !Number.isNaN(deg) && deg >= 0) setHeading(deg);
         });
       } catch (e) {
-        console.error('헤딩 구독 실패:', e);
+        console.error("헤딩 구독 실패:", e);
       }
     })();
 
     const checkAndAnnouncePoints = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== "granted") return;
         const loc = await Location.getCurrentPositionAsync({});
         const coords = loc.coords;
         setLastSentLocation(coords);
 
         if (guidePointsRef.current.length > 0) {
-          const unannouncedPoints = guidePointsRef.current.filter(p => !announcedPointsRef.current[`${p.latitude},${p.longitude}`]);
+          const unannouncedPoints = guidePointsRef.current.filter(
+            (p) => !announcedPointsRef.current[`${p.latitude},${p.longitude}`]
+          );
 
           if (unannouncedPoints.length > 0) {
-            const dists = unannouncedPoints.map(p => getDistanceFromLatLonInMeters(coords.latitude, coords.longitude, p.latitude, p.longitude));
+            const dists = unannouncedPoints.map((p) =>
+              getDistanceFromLatLonInMeters(
+                coords.latitude,
+                coords.longitude,
+                p.latitude,
+                p.longitude
+              )
+            );
             let minDist = Math.min(...dists);
-            let closestIdx = dists.findIndex(d => d === minDist);
+            let closestIdx = dists.findIndex((d) => d === minDist);
             let closestPoint = unannouncedPoints[closestIdx];
             setNextPointDistance(Math.max(0, Math.round(minDist - 14)));
 
-            // 경로 이탈 감지
             if (
               prevMinDistRef.current !== null &&
               prevClosestPointRef.current !== null &&
               !isRecalculatingRef.current &&
               closestPoint.latitude === prevClosestPointRef.current.latitude &&
-              closestPoint.longitude === prevClosestPointRef.current.longitude &&
+              closestPoint.longitude ===
+                prevClosestPointRef.current.longitude &&
               minDist - prevMinDistRef.current > 30
             ) {
               isRecalculatingRef.current = true;
-              setPointDescription('경로를 이탈하였습니다. 경로를 재탐색합니다.');
-              speakText('경로를 이탈하였습니다. 경로를 재탐색합니다.');
+              setPointDescription(
+                "경로를 이탈하였습니다. 경로를 재탐색합니다."
+              );
+              speakText("경로를 이탈하였습니다. 경로를 재탐색합니다.");
               Vibration.vibrate(1000);
 
-              if (!destinationCoords) { isRecalculatingRef.current = false; return; }
+              if (!destinationCoords) {
+                isRecalculatingRef.current = false;
+                return;
+              }
 
               try {
-                const data = await fetchPedestrianRoute(coords.longitude, coords.latitude, destinationCoords.longitude, destinationCoords.latitude, '출발지', destination || '도착지');
+                const data = await fetchPedestrianRoute(
+                  coords.longitude,
+                  coords.latitude,
+                  destinationCoords.longitude,
+                  destinationCoords.latitude,
+                  "출발지",
+                  destination || "도착지"
+                );
                 if (data && Array.isArray(data.features)) {
                   const points = data.features
-                    .filter(f => f.geometry?.type === 'Point' && f.properties?.description)
-                    .map(f => ({
+                    .filter(
+                      (f) =>
+                        f.geometry?.type === "Point" &&
+                        f.properties?.description
+                    )
+                    .map((f) => ({
                       description: f.properties.description,
                       latitude: f.geometry.coordinates[1],
                       longitude: f.geometry.coordinates[0],
@@ -193,7 +240,7 @@ const GuideScreen = ({ route, navigation }) => {
                   isRecalculatingRef.current = false;
                 }
               } catch (e) {
-                console.error('[경로 재탐색 실패]', e);
+                console.error("[경로 재탐색 실패]", e);
                 isRecalculatingRef.current = false;
               }
               return;
@@ -205,24 +252,29 @@ const GuideScreen = ({ route, navigation }) => {
             setNextPointDistance(null);
           }
 
-          // 포인트 도착 안내
           for (const point of guidePointsRef.current) {
             const key = `${point.latitude},${point.longitude}`;
             if (!announcedPointsRef.current[key]) {
-              const dist = getDistanceFromLatLonInMeters(coords.latitude, coords.longitude, point.latitude, point.longitude);
+              const dist = getDistanceFromLatLonInMeters(
+                coords.latitude,
+                coords.longitude,
+                point.latitude,
+                point.longitude
+              );
               if (dist <= 15) {
                 setPointDescription(point.description);
                 speakText(point.description);
                 Vibration.vibrate(500);
-                setAnnouncedPoints(prev => ({ ...prev, [key]: true }));
+                setAnnouncedPoints((prev) => ({ ...prev, [key]: true }));
 
-                if (point.description.includes('도착')) {
-                  // 목적지 도착 처리: 즐겨찾기 안내(기존 로직 유지)
+                if (point.description.includes("도착")) {
                   setGuidePoints([]);
                   setAnnouncedPoints({});
                   setLastSentLocation(null);
-                  setPointDescription('목적지에 도착하였습니다. 길안내를 종료합니다.');
-                  speakText('목적지에 도착하였습니다. 길안내를 종료합니다.');
+                  setPointDescription(
+                    "목적지에 도착하였습니다. 길안내를 종료합니다."
+                  );
+                  speakText("목적지에 도착하였습니다. 길안내를 종료합니다.");
                   Vibration.vibrate(2000);
                   isMounted = false;
                   if (intervalId) clearInterval(intervalId);
@@ -230,35 +282,50 @@ const GuideScreen = ({ route, navigation }) => {
 
                   setTimeout(async () => {
                     if (destination && destinationCoords) {
-                      const isAlreadyInFavorites = await checkIfAlreadyInFavorites(destination);
+                      const isAlreadyInFavorites =
+                        await checkIfAlreadyInFavorites(destination);
                       if (isAlreadyInFavorites) {
-                        setTimeout(() => navigation.navigate('NavigationScreen'), 1000);
+                        setTimeout(
+                          () => navigation.navigate("NavigationScreen"),
+                          1000
+                        );
                       } else {
                         Alert.alert(
-                          '즐겨찾기 추가',
+                          "즐겨찾기 추가",
                           `${destination}을(를) 즐겨찾기에 추가하시겠습니까?`,
                           [
-                            { text: '아니오', style: 'cancel', onPress: () => setTimeout(() => navigation.navigate('NavigationScreen'), 1000) },
                             {
-                              text: '예',
+                              text: "아니오",
+                              style: "cancel",
+                              onPress: () =>
+                                setTimeout(
+                                  () => navigation.navigate("NavigationScreen"),
+                                  1000
+                                ),
+                            },
+                            {
+                              text: "예",
                               onPress: () => {
-                                navigation.navigate('Setting', {
-                                  screen: 'Favorites',
+                                navigation.navigate("Setting", {
+                                  screen: "Favorites",
                                   params: {
                                     addFromNavigation: true,
-                                    destinationName: '',
+                                    destinationName: "",
                                     destinationAddress: destination,
-                                    destinationCoords: destinationCoords
-                                  }
+                                    destinationCoords: destinationCoords,
+                                  },
                                 });
-                              }
-                            }
+                              },
+                            },
                           ],
                           { cancelable: false }
                         );
                       }
                     } else {
-                      setTimeout(() => navigation.navigate('NavigationScreen'), 1000);
+                      setTimeout(
+                        () => navigation.navigate("NavigationScreen"),
+                        1000
+                      );
                     }
                   }, 3000);
                 }
@@ -267,29 +334,48 @@ const GuideScreen = ({ route, navigation }) => {
           }
         }
       } catch (e) {
-        console.error('위치 전송 실패:', e);
+        console.error("위치 전송 실패:", e);
       }
     };
 
     const updateDistances = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== "granted") return;
         const loc = await Location.getCurrentPositionAsync({});
         const coords = loc.coords;
 
         if (destinationCoords) {
-          const destDist = getDistanceFromLatLonInMeters(coords.latitude, coords.longitude, destinationCoords.latitude, destinationCoords.longitude);
+          const destDist = getDistanceFromLatLonInMeters(
+            coords.latitude,
+            coords.longitude,
+            destinationCoords.latitude,
+            destinationCoords.longitude
+          );
           setDestinationDistance(Math.round(destDist));
 
-          const bearing = getBearing(coords.latitude, coords.longitude, destinationCoords.latitude, destinationCoords.longitude);
+          const bearing = getBearing(
+            coords.latitude,
+            coords.longitude,
+            destinationCoords.latitude,
+            destinationCoords.longitude
+          );
           setBearingToDestination(bearing);
         }
 
         if (guidePointsRef.current.length > 0) {
-          const unannouncedPoints = guidePointsRef.current.filter(p => !announcedPointsRef.current[`${p.latitude},${p.longitude}`]);
+          const unannouncedPoints = guidePointsRef.current.filter(
+            (p) => !announcedPointsRef.current[`${p.latitude},${p.longitude}`]
+          );
           if (unannouncedPoints.length > 0) {
-            const dists = unannouncedPoints.map(p => getDistanceFromLatLonInMeters(coords.latitude, coords.longitude, p.latitude, p.longitude));
+            const dists = unannouncedPoints.map((p) =>
+              getDistanceFromLatLonInMeters(
+                coords.latitude,
+                coords.longitude,
+                p.latitude,
+                p.longitude
+              )
+            );
             let minDist = Math.min(...dists);
             setNextPointDistance(Math.max(0, Math.round(minDist - 14)));
           } else {
@@ -297,14 +383,18 @@ const GuideScreen = ({ route, navigation }) => {
           }
         }
       } catch (e) {
-        console.error('거리 업데이트 실패:', e);
+        console.error("거리 업데이트 실패:", e);
       }
     };
 
     fetchRouteOnce();
 
-    intervalId = setInterval(() => { if (isMounted) checkAndAnnouncePoints(); }, 5000);
-    const distanceIntervalId = setInterval(() => { if (isMounted) updateDistances(); }, 1000);
+    intervalId = setInterval(() => {
+      if (isMounted) checkAndAnnouncePoints();
+    }, 5000);
+    const distanceIntervalId = setInterval(() => {
+      if (isMounted) updateDistances();
+    }, 1000);
 
     checkAndAnnouncePoints();
     updateDistances();
@@ -313,59 +403,69 @@ const GuideScreen = ({ route, navigation }) => {
       isMounted = false;
       if (intervalId) clearInterval(intervalId);
       if (distanceIntervalId) clearInterval(distanceIntervalId);
-      if (headingSubRef.current) { headingSubRef.current.remove(); headingSubRef.current = null; }
+      if (headingSubRef.current) {
+        headingSubRef.current.remove();
+        headingSubRef.current = null;
+      }
       Speech.stop();
     };
-  }, []); // 안내 로직
+  }, []);
 
-  // guidePoints 변경 시 플래그 초기화
-  useEffect(() => { setAnnouncedPoints({}); }, [guidePoints]);
+  useEffect(() => {
+    setAnnouncedPoints({});
+  }, [guidePoints]);
 
-  // 화면 진입 TTS (기존 유지)
   useEffect(() => {
     if (isNavigatingHome) return;
     navigation.setOptions({ gestureEnabled: false });
     const welcomeMessage = destination
       ? `${destination}까지 실시간 안내를 시작합니다. 카메라가 준비되면 실시간 안내가 시작됩니다.`
-      : '길찾기 안내를 시작합니다. 카메라가 준비되면 실시간 안내가 시작됩니다.';
+      : "길찾기 안내를 시작합니다. 카메라가 준비되면 실시간 안내가 시작됩니다.";
     speakText(welcomeMessage);
-    return () => { Speech.stop(); };
+    return () => {
+      Speech.stop();
+    };
   }, [destination, navigation, isNavigatingHome]);
 
-  // 헤딩 → 상대각 & 정면 안내 (기존 유지)
   useEffect(() => {
     if (heading == null || bearingToDestination == null) return;
     const rel = normalizeAngle(bearingToDestination - heading);
     setRelativeAngle(rel);
     if (isNavigatingHome) return;
     const now = Date.now();
-    if ((rel <= 10 || rel >= 350) && now - lastHeadingSpokenAtRef.current > 5000) {
-      speakText('정면 방향입니다. 그대로 진행하세요.');
+    if (
+      (rel <= 10 || rel >= 350) &&
+      now - lastHeadingSpokenAtRef.current > 5000
+    ) {
+      speakText("정면 방향입니다. 그대로 진행하세요.");
       lastHeadingSpokenAtRef.current = now;
     }
   }, [heading, bearingToDestination, isNavigatingHome]);
 
   const handleCameraReady = () => {
-    console.log('📱 GuideScreen: Camera is ready');
+    console.log("GuideScreen: Camera is ready");
     setCameraReady(true);
     if (isNavigatingHome) return;
-    speakText('카메라가 준비되었습니다. 실시간 안내를 시작합니다.');
+    speakText("카메라가 준비되었습니다. 실시간 안내를 시작합니다.");
   };
 
-  // === ✅ YOLO: 소켓 연결 ===
   useEffect(() => {
-    const sock = io(SERVER_URL, { transports: ['websocket'], reconnection: true });
+    const sock = io(SERVER_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+    });
     socketRef.current = sock;
 
-    sock.on('connect', () => console.log('✅ Socket connected'));
-    sock.on('disconnect', () => console.log('❌ Socket disconnected'));
+    sock.on("connect", () => console.log("Socket connected"));
+    sock.on("disconnect", () => console.log("Socket disconnected"));
 
-    sock.on('detection', (data = []) => {
+    sock.on("detection", (data = []) => {
       const arr = Array.isArray(data) ? data : [];
       setDetections(arr);
 
-      // 위험 approaching이면서 보조세트 제외 시 경고
-      const hasDangerApproach = arr.some(d => d?.approaching && !ASSIST_SET.has(d.class_name));
+      const hasDangerApproach = arr.some(
+        (d) => d?.approaching && !ASSIST_SET.has(d.class_name)
+      );
       if (hasDangerApproach) {
         Vibration.vibrate([0, 300, 120, 300], false);
         setWarningVisible(true);
@@ -376,7 +476,6 @@ const GuideScreen = ({ route, navigation }) => {
     return () => sock.disconnect();
   }, []);
 
-  // === ✅ YOLO: 프레임 전송 ===
   useEffect(() => {
     if (!permission?.granted || !isFocused) return;
 
@@ -392,17 +491,15 @@ const GuideScreen = ({ route, navigation }) => {
         if (!photo) return;
 
         setPhotoSize({ width: photo.width, height: photo.height });
-        const imgData = 'data:image/jpeg;base64,' + photo.base64;
+        const imgData = "data:image/jpeg;base64," + photo.base64;
 
-        socketRef.current?.emit('image', {
+        socketRef.current?.emit("image", {
           image: imgData,
           width: photo.width,
           height: photo.height,
         });
-
-        // console.log('📤 Frame sent');
       } catch (e) {
-        console.error('🚫 sendFrame error', e);
+        console.error("sendFrame error", e);
       } finally {
         setTimeout(() => setFrameReady(true), 2000);
       }
@@ -411,14 +508,12 @@ const GuideScreen = ({ route, navigation }) => {
     return () => clearInterval(interval);
   }, [permission, isFocused, frameReady]);
 
-  // === ✅ YOLO: TTS 조합 (위험/보조 좌우 + 다가옴) ===
   useEffect(() => {
     if (photoSize.width <= 1 || detections.length === 0) return;
 
     const scaleX = previewWidth / photoSize.width;
     const centerX = previewWidth / 2;
 
-    // 위험/보조 분리
     const danger = [];
     const assist = [];
     for (const d of detections) {
@@ -439,67 +534,92 @@ const GuideScreen = ({ route, navigation }) => {
     };
 
     const [leftDangerArr, rightDangerArr] = splitLR(danger);
-    let dangerMsg = '';
-    if (leftDangerArr.length && rightDangerArr.length) dangerMsg = `왼쪽에는 ${leftDangerArr.join(', ')} 있고, 오른쪽에는 ${rightDangerArr.join(', ')} 있습니다.`;
-    else if (leftDangerArr.length) dangerMsg = `왼쪽에 ${leftDangerArr.join(', ')} 있습니다.`;
-    else if (rightDangerArr.length) dangerMsg = `오른쪽에 ${rightDangerArr.join(', ')} 있습니다.`;
+    let dangerMsg = "";
+    if (leftDangerArr.length && rightDangerArr.length)
+      dangerMsg = `왼쪽에는 ${leftDangerArr.join(
+        ", "
+      )} 있고, 오른쪽에는 ${rightDangerArr.join(", ")} 있습니다.`;
+    else if (leftDangerArr.length)
+      dangerMsg = `왼쪽에 ${leftDangerArr.join(", ")} 있습니다.`;
+    else if (rightDangerArr.length)
+      dangerMsg = `오른쪽에 ${rightDangerArr.join(", ")} 있습니다.`;
 
     const [leftAssistArr, rightAssistArr] = splitLR(assist);
-    let assistMsg = '';
-    if (leftAssistArr.length && rightAssistArr.length) assistMsg = `보조안내: 왼쪽에는 ${leftAssistArr.join(', ')} 있고, 오른쪽에는 ${rightAssistArr.join(', ')} 있습니다.`;
-    else if (leftAssistArr.length) assistMsg = `보조안내: 왼쪽에 ${leftAssistArr.join(', ')} 있습니다.`;
-    else if (rightAssistArr.length) assistMsg = `보조안내: 오른쪽에 ${rightAssistArr.join(', ')} 있습니다.`;
+    let assistMsg = "";
+    if (leftAssistArr.length && rightAssistArr.length)
+      assistMsg = `보조안내: 왼쪽에는 ${leftAssistArr.join(
+        ", "
+      )} 있고, 오른쪽에는 ${rightAssistArr.join(", ")} 있습니다.`;
+    else if (leftAssistArr.length)
+      assistMsg = `보조안내: 왼쪽에 ${leftAssistArr.join(", ")} 있습니다.`;
+    else if (rightAssistArr.length)
+      assistMsg = `보조안내: 오른쪽에 ${rightAssistArr.join(", ")} 있습니다.`;
 
-    const approachingArr = Array.from(new Set(danger.filter(d => d?.approaching).map(d => d.class_name)));
-    const distanceMsg = approachingArr.length ? `${approachingArr.join(', ')} 다가오고 있습니다.` : '';
+    const approachingArr = Array.from(
+      new Set(danger.filter((d) => d?.approaching).map((d) => d.class_name))
+    );
+    const distanceMsg = approachingArr.length
+      ? `${approachingArr.join(", ")} 다가오고 있습니다.`
+      : "";
 
-    const combined = [dangerMsg, assistMsg, distanceMsg].filter(Boolean).join(' ');
+    const combined = [dangerMsg, assistMsg, distanceMsg]
+      .filter(Boolean)
+      .join(" ");
     if (!combined) return;
     if (combined === lastSpokenMsgRef.current) return;
 
-     console.log('🗣️ speak:', combined);
+    console.log("🗣️ speak:", combined);
     if (ttsTimerRef.current) clearTimeout(ttsTimerRef.current);
     ttsTimerRef.current = setTimeout(() => {
-      try { Speech.stop(); } catch {}
-      Speech.speak(combined, { language: 'ko-KR', pitch: 1.0, rate: 2.0 });
+      try {
+        Speech.stop();
+      } catch {}
+      Speech.speak(combined, { language: "ko-KR", pitch: 1.0, rate: 2.0 });
       lastSpokenMsgRef.current = combined;
     }, 350);
   }, [detections, photoSize]);
 
-  // === 유틸 ===
   function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
-  function toRad(deg) { return (deg * Math.PI) / 180; }
-  function toDeg(rad) { return (rad * 180) / Math.PI; }
-  function normalizeAngle(deg) { return (deg % 360 + 360) % 360; }
+  function toRad(deg) {
+    return (deg * Math.PI) / 180;
+  }
+  function toDeg(rad) {
+    return (rad * 180) / Math.PI;
+  }
+  function normalizeAngle(deg) {
+    return ((deg % 360) + 360) % 360;
+  }
   function getBearing(lat1, lon1, lat2, lon2) {
     const phi1 = toRad(lat1);
     const phi2 = toRad(lat2);
     const deltaLambda = toRad(lon2 - lon1);
     const y = Math.sin(deltaLambda) * Math.cos(phi2);
-    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+    const x =
+      Math.cos(phi1) * Math.sin(phi2) -
+      Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
     return normalizeAngle(toDeg(Math.atan2(y, x)));
   }
   function angleToInstruction(angle) {
     const a = normalizeAngle(angle);
-    if (a <= 10 || a >= 350) return '정면';
-    if (a < 45) return '조금 오른쪽';
-    if (a < 135) return '오른쪽';
-    if (a < 225) return '뒤쪽';
-    if (a < 315) return '왼쪽';
-    return '조금 왼쪽';
+    if (a <= 10 || a >= 350) return "정면";
+    if (a < 45) return "조금 오른쪽";
+    if (a < 135) return "오른쪽";
+    if (a < 225) return "뒤쪽";
+    if (a < 315) return "왼쪽";
+    return "조금 왼쪽";
   }
 
-  // 권한 UI
   if (!permission) {
     return (
       <View style={styles.container}>
@@ -510,15 +630,17 @@ const GuideScreen = ({ route, navigation }) => {
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>📵 카메라 권한이 필요합니다.</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+        <Text style={styles.text}>카메라 권한이 필요합니다.</Text>
+        <TouchableOpacity
+          style={styles.permissionButton}
+          onPress={requestPermission}
+        >
           <Text style={styles.buttonText}>카메라 권한 허용</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // 렌더
   return (
     <View style={{ flex: 1 }}>
       <CameraView
@@ -526,89 +648,118 @@ const GuideScreen = ({ route, navigation }) => {
         style={styles.camera}
         onCameraReady={handleCameraReady}
       >
-        {/* 상단 안내 텍스트 */}
-        {pointDescription !== '' && (
-          <View style={{ position: 'absolute', top: 40, left: 0, right: 0, alignItems: 'center', zIndex: 10 }}>
-            <Text style={{
-              backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: 22,
-              paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginBottom: 5,
-            }}>
+        {pointDescription !== "" && (
+          <View
+            style={{
+              position: "absolute",
+              top: 40,
+              left: 0,
+              right: 0,
+              alignItems: "center",
+              zIndex: 10,
+            }}
+          >
+            <Text
+              style={{
+                backgroundColor: "rgba(0,0,0,0.7)",
+                color: "#fff",
+                fontSize: 22,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 8,
+                marginBottom: 5,
+              }}
+            >
               {pointDescription}
             </Text>
             {nextPointDistance !== null && (
-              <Text style={{
-                backgroundColor: 'rgba(0,0,0,0.7)', color: '#FF8C42', fontSize: 16,
-                paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, marginBottom: 3,
-              }}>
+              <Text
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.7)",
+                  color: "#FF8C42",
+                  fontSize: 16,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  marginBottom: 3,
+                }}
+              >
                 다음 안내까지 남은 거리: {nextPointDistance}m
               </Text>
             )}
             {destinationDistance !== null && (
-              <Text style={{
-                backgroundColor: 'rgba(0,0,0,0.7)', color: '#4FC3F7', fontSize: 16,
-                paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6,
-              }}>
+              <Text
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.7)",
+                  color: "#4FC3F7",
+                  fontSize: 16,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                }}
+              >
                 목적지까지 남은 거리: {destinationDistance}m
               </Text>
             )}
           </View>
         )}
 
-        {/* 방위 화살표 (기존 유지) */}
         {relativeAngle != null && (
-          <View style={{ position: 'absolute', top: '45%', left: 0, right: 0, alignItems: 'center', zIndex: 20 }}>
-            <View style={{ alignItems: 'center', transform: [{ rotate: `${relativeAngle}deg` }] }}>
-              <View style={{
-                width: 0, height: 0, borderLeftWidth: 22, borderRightWidth: 22, borderBottomWidth: 30,
-                borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#FF8C42'
-              }} />
-              <View style={{ width: 10, height: 64, backgroundColor: '#FF8C42', borderRadius: 5, marginTop: -2 }} />
+          <View
+            style={{
+              position: "absolute",
+              top: "45%",
+              left: 0,
+              right: 0,
+              alignItems: "center",
+              zIndex: 20,
+            }}
+          >
+            <View
+              style={{
+                alignItems: "center",
+                transform: [{ rotate: `${relativeAngle}deg` }],
+              }}
+            >
+              <View
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeftWidth: 22,
+                  borderRightWidth: 22,
+                  borderBottomWidth: 30,
+                  borderLeftColor: "transparent",
+                  borderRightColor: "transparent",
+                  borderBottomColor: "#FF8C42",
+                }}
+              />
+              <View
+                style={{
+                  width: 10,
+                  height: 64,
+                  backgroundColor: "#FF8C42",
+                  borderRadius: 5,
+                  marginTop: -2,
+                }}
+              />
             </View>
-            <Text style={{ color: '#FF8C42', marginTop: 8 }}>
+            <Text style={{ color: "#FF8C42", marginTop: 8 }}>
               {angleToInstruction(relativeAngle)}
             </Text>
           </View>
         )}
 
-        {/* YOLO 경고 빨간 오버레이 */}
         {warningVisible && <View style={styles.warningOverlay} />}
 
-        {/* YOLO bbox 오버레이 */}
-        {/* <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-          {detections.map((item, idx) => {
-            const scaleX = previewWidth / photoSize.width;
-            const scaleY = previewHeight / photoSize.height;
-
-            const x = item.bbox[0] * scaleX;
-            const y = item.bbox[1] * scaleY;
-            const w = (item.bbox[2] - item.bbox[0]) * scaleX;
-            const h = (item.bbox[3] - item.bbox[1]) * scaleY;
-
-            const color = item.approaching ? 'red' : 'lime';
-
-            return (
-              <React.Fragment key={idx}>
-                <Rect x={x} y={y} width={w} height={h} stroke={color} strokeWidth={2} fill="transparent" />
-                <SvgText x={x + 4} y={Math.max(12, y - 6)} fontSize={14} fontWeight="bold" fill={color}>
-                  {`${item.class_name} (${item.confidence})`}
-                </SvgText>
-                {item.approaching && (
-                  <SvgText x={x + 4} y={y + h + 18} fontSize={16} fontWeight="bold" fill="red">
-                    위험
-                  </SvgText>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </Svg> */}
-
-        {/* 기존 위험 시뮬레이터 용 오버레이(원하면 삭제 가능) */}
         {danger && <OverlayWarning label={label} />}
 
-        {/* 하단 오버레이 (기존 UI 유지) */}
         <View style={styles.overlay}>
-          <Text style={styles.text}>{cameraReady ? '안내 중...' : '카메라 준비 중...'}</Text>
-          {destination && <Text style={styles.destinationText}>목적지: {destination}</Text>}
+          <Text style={styles.text}>
+            {cameraReady ? "안내 중..." : "카메라 준비 중..."}
+          </Text>
+          {destination && (
+            <Text style={styles.destinationText}>목적지: {destination}</Text>
+          )}
           {!cameraReady && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#FF8C42" />
@@ -621,18 +772,36 @@ const GuideScreen = ({ route, navigation }) => {
   );
 };
 
-// 스타일
 const styles = StyleSheet.create({
   camera: { flex: 1 },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
-  overlay: { position: 'absolute', bottom: 60, alignSelf: 'center', alignItems: 'center' },
-  text: { color: '#FFFFFF', fontSize: 18, marginBottom: 5 },
-  destinationText: { color: '#FF8C42', fontSize: 16, marginBottom: 10 },
-  loadingContainer: { alignItems: 'center', marginTop: 10 },
-  loadingText: { color: '#FFFFFF', fontSize: 14, marginTop: 10 },
-  permissionButton: { marginTop: 20, backgroundColor: '#4FC3F7', padding: 15, borderRadius: 8 },
-  buttonText: { color: '#FFFFFF', fontSize: 16 },
-  warningOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 0, 0, 0.5)', zIndex: 10 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000",
+  },
+  overlay: {
+    position: "absolute",
+    bottom: 60,
+    alignSelf: "center",
+    alignItems: "center",
+  },
+  text: { color: "#FFFFFF", fontSize: 18, marginBottom: 5 },
+  destinationText: { color: "#FF8C42", fontSize: 16, marginBottom: 10 },
+  loadingContainer: { alignItems: "center", marginTop: 10 },
+  loadingText: { color: "#FFFFFF", fontSize: 14, marginTop: 10 },
+  permissionButton: {
+    marginTop: 20,
+    backgroundColor: "#4FC3F7",
+    padding: 15,
+    borderRadius: 8,
+  },
+  buttonText: { color: "#FFFFFF", fontSize: 16 },
+  warningOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 0, 0, 0.5)",
+    zIndex: 10,
+  },
 });
 
 export default GuideScreen;

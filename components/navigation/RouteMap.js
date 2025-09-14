@@ -1,22 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { TMAP_API_KEY } from '@env';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { WebView } from "react-native-webview";
+import { TMAP_API_KEY } from "@env";
 
-const RouteMap = ({ destination, duration, distance, currentLocation, destinationCoords, onCountdownEnd, error, isLoading, disableCountdown = false }) => {
+const RouteMap = ({
+  destination,
+  duration,
+  distance,
+  currentLocation,
+  destinationCoords,
+  onCountdownEnd,
+  error,
+  isLoading,
+  disableCountdown = false,
+}) => {
   const [countdown, setCountdown] = useState(5);
 
-  // ⏱ 카운트 다운 감소만 실행
   useEffect(() => {
     if (!disableCountdown && !error && !isLoading) {
       const timer = setInterval(() => {
-        setCountdown(prev => (prev > 1 ? prev - 1 : prev));
+        setCountdown((prev) => (prev > 1 ? prev - 1 : prev));
       }, 1000);
       return () => clearInterval(timer);
     }
   }, [disableCountdown, error, isLoading]);
 
-  // ✅ 카운트가 1이 되면 navigation safely 수행
   useEffect(() => {
     if (!disableCountdown && countdown === 1) {
       const timeout = setTimeout(() => {
@@ -26,7 +41,6 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
     }
   }, [disableCountdown, countdown]);
 
-  // 에러 상태 표시
   if (error) {
     return (
       <View style={styles.container}>
@@ -41,7 +55,6 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
     );
   }
 
-  // 로딩 상태 표시
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -56,20 +69,18 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
     );
   }
 
-  // 디버깅을 위한 로그 출력
-  console.log('RouteMap props:', {
+  console.log("RouteMap props:", {
     destination,
     duration,
     distance,
     currentLocation,
     destinationCoords,
     error,
-    isLoading
+    isLoading,
   });
 
-  // 목적지 좌표가 없으면 에러 표시
   if (!destinationCoords) {
-    console.log('destinationCoords가 없습니다');
+    console.log("destinationCoords가 없습니다");
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -135,7 +146,7 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "appKey": "PPJvzTZ1zg5PFbPCmajGn77jpjUPP3xF1X5dCzhu"
+              "appKey": ""
             },
             body: JSON.stringify({
               startX: ${currentLocation.longitude},
@@ -211,7 +222,6 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
 
   return (
     <View style={styles.container}>
-      {/* 상단 텍스트 */}
       <View style={styles.header}>
         <Text style={styles.directionText}>현위치 → {destination}</Text>
         {duration && distance && (
@@ -221,7 +231,6 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
         )}
       </View>
 
-      {/* 지도 */}
       <View style={styles.mapContainer}>
         <WebView
           source={{ html: tmapHtml }}
@@ -232,19 +241,18 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
           scalesPageToFit={true}
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
-            console.error('WebView 오류:', nativeEvent);
+            console.error("WebView 오류:", nativeEvent);
           }}
           onHttpError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
-            console.error('WebView HTTP 오류:', nativeEvent);
+            console.error("WebView HTTP 오류:", nativeEvent);
           }}
           onMessage={(event) => {
-            console.log('WebView 메시지:', event.nativeEvent.data);
+            console.log("WebView 메시지:", event.nativeEvent.data);
           }}
         />
       </View>
 
-      {/* 카운트다운 */}
       {!disableCountdown && !error && !isLoading && (
         <View style={styles.countdownContainer}>
           <Text style={styles.countdownText}>
@@ -259,24 +267,24 @@ const RouteMap = ({ destination, duration, distance, currentLocation, destinatio
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   header: {
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   directionText: {
-    color: '#4FC3F7',
+    color: "#4FC3F7",
     fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   infoText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 4,
   },
   mapContainer: {
@@ -286,41 +294,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   countdownContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   countdownText: {
-    color: '#4FC3F7',
+    color: "#4FC3F7",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: "#ff6b6b",
     fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 8,
   },
   errorSubText: {
-    color: '#aaa',
+    color: "#aaa",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   loadingText: {
-    color: '#4FC3F7',
+    color: "#4FC3F7",
     fontSize: 16,
     marginTop: 16,
   },

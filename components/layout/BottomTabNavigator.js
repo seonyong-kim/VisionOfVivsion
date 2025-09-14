@@ -12,21 +12,21 @@ const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#FF8C42", // 활성화일때 색상을 의미
-        tabBarInactiveTintColor: "#FFFFFF", // 비활성화일때 색상 의미
+        tabBarActiveTintColor: "#FF8C42",
+        tabBarInactiveTintColor: "#FFFFFF",
         tabBarStyle: {
-          backgroundColor: "#121212", // 탭 바 배경색
+          backgroundColor: "#121212",
         },
       }}
     >
       <Tab.Screen
-        name="Home" //tab내부 이름
-        component={HomeScreen} //실제 보여질 컴포넌트로 HomeScreen.js가 보여진다.
+        name="Home"
+        component={HomeScreen}
         options={{
-          tabBarLabel: "Home", //text로 화면에 보여질거
-          tabBarIcon: (
-            { color } //color는 위 screenOptions에서 자동으로 가져옴
-          ) => <MaterialCommunityIcons name="home" size={30} color={color} />, // 아이콘 설정 및 색싱, 크기
+          tabBarLabel: "Home",
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="home" size={30} color={color} />
+          ),
         }}
       />
       <Tab.Screen

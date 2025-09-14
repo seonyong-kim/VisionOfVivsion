@@ -4,28 +4,28 @@ import * as Speech from "expo-speech";
 import { backGround } from "../../styles/BackGround";
 
 export default function TutorialFinish({ route, navigation }) {
-  const {rate, pitch} = route.params;
+  const { rate, pitch } = route.params;
 
   const guidFinishTTS = async () => {
-    Speech.speak("튜토리얼이 끝났습니다."
-      + "다시듣고 싶으면 설정에서 튜토리얼을 말씀하시면 됩니다."
-      + "메인인 객체 인식을 시작합니다.",{
+    Speech.speak(
+      "튜토리얼이 끝났습니다." +
+        "다시듣고 싶으면 설정에서 튜토리얼을 말씀하시면 됩니다." +
+        "메인인 객체 인식을 시작합니다.",
+      {
         rate,
-        pitch
+        pitch,
       }
     );
 
-    const delay = 9500 * (rate < 1 ? (1 + (1 - rate)) : 1 / (1 + (rate - 1)));   
+    const delay = 9500 * (rate < 1 ? 1 + (1 - rate) : 1 / (1 + (rate - 1)));
     setTimeout(() => {
       navigation.replace("Root", {
         rate: rate,
-        pitch : pitch
+        pitch: pitch,
       });
     }, delay);
   };
 
-  // 화면이 시작될때 함수가 자동으로 시작되게 하려면
-  // useEffect를 사용
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
@@ -34,11 +34,16 @@ export default function TutorialFinish({ route, navigation }) {
 
     guidFinishTTS();
 
-    return () => backHandler.remove(); // 언마운트 시 이벤트 제거
+    return () => backHandler.remove();
   }, []);
 
   return (
-    <View style={[backGround.main,{    alignItems: "center", justifyContent: "center"}]}>
+    <View
+      style={[
+        backGround.main,
+        { alignItems: "center", justifyContent: "center" },
+      ]}
+    >
       <Text style={styles.mainText}>튜토리얼 완료</Text>
     </View>
   );

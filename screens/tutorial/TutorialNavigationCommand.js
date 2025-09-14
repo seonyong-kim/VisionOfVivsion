@@ -5,25 +5,27 @@ import { backGround } from "../../styles/BackGround";
 import { tutorialCommand } from "../../styles/TutorialCommand";
 
 export default function TutorialNavigationCommand({ route, navigation }) {
-  const {rate, pitch} = route.params;
+  const { rate, pitch } = route.params;
 
   const NavigationCommandTTS = async () => {
-    Speech.speak("길 찾기 관련 tutorial입니다."
-      + "길 찾기 관련 명령어 2개를 소개하겠습니다."
-      + "길 찾기, 길 찾기 모드로 전환합니다."
-      + "중단, 길 찾기를 중단합니다."
-      + "다음으로 길 찾기 결과화면을 보여주면서 설명드리겠습니다.",{
+    Speech.speak(
+      "길 찾기 관련 tutorial입니다." +
+        "길 찾기 관련 명령어 2개를 소개하겠습니다." +
+        "길 찾기, 길 찾기 모드로 전환합니다." +
+        "중단, 길 찾기를 중단합니다." +
+        "다음으로 길 찾기 결과화면을 보여주면서 설명드리겠습니다.",
+      {
         rate,
-        pitch
+        pitch,
       }
     );
 
-    const delay = 16500 * (rate < 1 ? (1 + (1 - rate)) : 1 / (1 + (rate - 1)));   
+    const delay = 16500 * (rate < 1 ? 1 + (1 - rate) : 1 / (1 + (rate - 1)));
 
     setTimeout(() => {
-      navigation.navigate("TutorialNavigationDestinationResult",{
+      navigation.navigate("TutorialNavigationDestinationResult", {
         rate: rate,
-        pitch: pitch
+        pitch: pitch,
       });
     }, delay);
   };
@@ -36,11 +38,13 @@ export default function TutorialNavigationCommand({ route, navigation }) {
 
     NavigationCommandTTS();
 
-    return () => backHandler.remove(); // 언마운트 시 이벤트 제거
+    return () => backHandler.remove();
   }, []);
 
   return (
-    <View style={[backGround.main, { flexDirection: "column", paddingTop: 60,}]}>
+    <View
+      style={[backGround.main, { flexDirection: "column", paddingTop: 60 }]}
+    >
       <View style={tutorialCommand.headerContainer}>
         <Text style={tutorialCommand.headerText}>길 찾기</Text>
       </View>

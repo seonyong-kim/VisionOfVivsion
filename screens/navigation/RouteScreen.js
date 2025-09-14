@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import RouteMap from '../../components/navigation/RouteMap';
-import { fetchPedestrianRoute } from '../../utils/navigation/tmap';
-import { speakText } from '../../utils/tts';
+import React, { useEffect, useState } from "react";
+import { Alert } from "react-native";
+import RouteMap from "../../components/navigation/RouteMap";
+import { fetchPedestrianRoute } from "../../utils/navigation/tmap";
+import { speakText } from "../../utils/tts";
 
 const RouteScreen = ({ route, navigation }) => {
   const { currentLocation, destination, destinationCoords } = route.params;
@@ -12,21 +12,19 @@ const RouteScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // 화면 진입 시 네비게이션 옵션 설정
     navigation.setOptions({
-      //headerShown: false,
-      gestureEnabled: false, // 뒤로가기 제스처 비활성화
+      gestureEnabled: false,
     });
 
     const getRoute = async () => {
       if (!currentLocation) {
-        setError('현재 위치 정보가 없습니다.');
+        setError("현재 위치 정보가 없습니다.");
         setIsLoading(false);
         return;
       }
 
       if (!destinationCoords) {
-        setError('목적지 좌표 정보가 없습니다.');
+        setError("목적지 좌표 정보가 없습니다.");
         setIsLoading(false);
         return;
       }
@@ -38,10 +36,10 @@ const RouteScreen = ({ route, navigation }) => {
         const endX = destinationCoords.longitude;
         const endY = destinationCoords.latitude;
 
-        console.log('경로 요청 시작:', {
+        console.log("경로 요청 시작:", {
           start: `${currentLocation.longitude}, ${currentLocation.latitude}`,
           end: `${endX}, ${endY}`,
-          destination
+          destination,
         });
 
         const result = await fetchPedestrianRoute(
@@ -49,12 +47,12 @@ const RouteScreen = ({ route, navigation }) => {
           currentLocation.latitude,
           endX,
           endY,
-          '현재 위치',
+          "현재 위치",
           destination
         );
 
         if (!result.features || result.features.length === 0) {
-          throw new Error('경로를 찾을 수 없습니다.');
+          throw new Error("경로를 찾을 수 없습니다.");
         }
 
         const { totalTime, totalDistance } = result.features[0].properties;
@@ -63,27 +61,27 @@ const RouteScreen = ({ route, navigation }) => {
 
         const estimatedMinutes = Math.round(totalTime / 60);
         if (estimatedMinutes > 30) {
-          speakText(`예상 소요시간은 ${estimatedMinutes}분입니다. 대중교통 이용을 권장합니다. 이전 화면으로 돌아갑니다.`);
+          speakText(
+            `예상 소요시간은 ${estimatedMinutes}분입니다. 대중교통 이용을 권장합니다. 이전 화면으로 돌아갑니다.`
+          );
           setTimeout(() => {
-            navigation.navigate('NavigationScreen');
-          }, 3500); // 음성 안내 후 약간의 지연
+            navigation.navigate("NavigationScreen");
+          }, 3500);
           return;
         }
 
-        speakText(`${destination}까지 안내를 시작합니다. 예상 소요시간은 ${estimatedMinutes}분입니다.`);
-      } catch (err) {
-        console.error('경로 요청 실패:', err);
-        setError(err.message);
-        speakText('경로를 불러오지 못했습니다. 다시 시도해 주세요.');
-        
-        Alert.alert(
-          '경로 오류',
-          err.message || '경로를 불러오지 못했습니다.',
-          [
-            { text: '뒤로 가기', onPress: () => navigation.goBack() },
-            { text: '다시 시도', onPress: () => getRoute() }
-          ]
+        speakText(
+          `${destination}까지 안내를 시작합니다. 예상 소요시간은 ${estimatedMinutes}분입니다.`
         );
+      } catch (err) {
+        console.error("경로 요청 실패:", err);
+        setError(err.message);
+        speakText("경로를 불러오지 못했습니다. 다시 시도해 주세요.");
+
+        Alert.alert("경로 오류", err.message || "경로를 불러오지 못했습니다.", [
+          { text: "뒤로 가기", onPress: () => navigation.goBack() },
+          { text: "다시 시도", onPress: () => getRoute() },
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -94,13 +92,11 @@ const RouteScreen = ({ route, navigation }) => {
 
   const handleCountdownEnd = () => {
     if (duration !== null && duration > 30) {
-      // 30분 초과 시 GuideScreen이 아니라 NavigationScreen으로 이동
-      navigation.navigate('MainTabs', { screen: 'Navigation' });
+      navigation.navigate("MainTabs", { screen: "Navigation" });
       return;
     }
-    // 카메라 초기화를 위한 짧은 지연 후 GuideScreen 이동
     setTimeout(() => {
-      navigation.navigate('Guide', {
+      navigation.navigate("Guide", {
         currentLocation,
         destination,
         destinationCoords,

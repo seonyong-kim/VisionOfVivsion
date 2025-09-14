@@ -12,48 +12,47 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
 
-  useEffect(() =>{
+  useEffect(() => {
     const check = async () => {
-      const {isFirst, error} = await CheckFirstLaunch();
+      const { isFirst, error } = await CheckFirstLaunch();
       console.log("첫 실행 여부: ", isFirst, isFirstLaunch);
-      if(error){
+      if (error) {
         console.log(error);
-        Speech.speak('문제가 발생했습니다.');
+        Speech.speak("문제가 발생했습니다.");
       }
       setIsFirstLaunch(isFirst);
     };
 
     check();
-  }, [])
+  }, []);
 
   if (isFirstLaunch === null) {
-    return true; 
+    return true;
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName={isFirstLaunch? 'Start': 'Root'}
+        initialRouteName={isFirstLaunch ? "Start" : "Root"}
       >
         <Stack.Screen
           name="Tutorial"
           component={Tutorial}
-          options={{ headerShown: false }} // 상단 바 안 보이게
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Root"
           component={BottomTabNavigator}
-          options={{ headerShown: false }} // 상단 바 안 보이게
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Start"
           component={Start}
-          options={{ headerShown: false }} // 상단 바 안 보이게
+          options={{ headerShown: false }}
         />
-
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,11 +1,11 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 export const text = StyleSheet.create({
-    header:{
+  header: {
     textAlign: "center",
     fontSize: 60,
     color: "#FF8C42",
-    },
+  },
 });
 
 export const FavoritesText = {

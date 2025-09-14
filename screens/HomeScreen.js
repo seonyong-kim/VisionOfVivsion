@@ -16,7 +16,7 @@ import * as Speech from "expo-speech";
 import * as ImageManipulator from "expo-image-manipulator";
 
 const { width: previewWidth, height: previewHeight } = Dimensions.get("window");
-const SERVER_URL = "http://192.168.0.23:5000"; // 본인 서버 IP:포트
+const SERVER_URL = "서버IP";
 
 export default function HomeScreen() {
   const cameraRef = useRef(null);
@@ -28,18 +28,14 @@ export default function HomeScreen() {
   const [photoSize, setPhotoSize] = useState({ width: 1, height: 1 });
   const [frameReady, setFrameReady] = useState(true);
 
-  // 📚 서버에서 받은 모델 클래스 목록
   const [classNames, setClassNames] = useState([]);
 
-  // 🔍 입력/타깃
   const [targetInput, setTargetInput] = useState("");
-  const [targetClass, setTargetClass] = useState(""); // 비어있으면 일반 모드
+  const [targetClass, setTargetClass] = useState("");
 
-  // 🔊 중복 발화 방지
   const lastSpeakRef = useRef(0);
   const lastGroupsRef = useRef({ left: "", right: "" });
 
-  // 1) Socket.IO 초기화
   useEffect(() => {
     const sock = io(SERVER_URL, {
       transports: ["websocket"],
@@ -47,20 +43,17 @@ export default function HomeScreen() {
     });
     socketRef.current = sock;
 
-    sock.on("connect", () => console.log("✅ Socket connected"));
-    sock.on("disconnect", () => console.log("❌ Socket disconnected"));
+    sock.on("connect", () => console.log("Socket connected"));
+    sock.on("disconnect", () => console.log("Socket disconnected"));
     sock.on("detection", (data) => setDetections(data || []));
-    // ⬇️ 서버가 connect 시 내려주는 클래스 목록
     sock.on("class_names", (payload) => {
       const arr = payload?.classes || [];
       setClassNames(arr.map(String));
-      console.log("📚 YOLO classes:", arr);
     });
 
     return () => sock.disconnect();
   }, []);
 
-  // 2) 자동 프레임 전송
   useEffect(() => {
     if (!permission?.granted || !isFocused) return;
 
@@ -82,9 +75,8 @@ export default function HomeScreen() {
           width: photo.width,
           height: photo.height,
         });
-        console.log("📤 Frame sent");
       } catch (e) {
-        console.error("🚫 sendFrame error", e);
+        console.error("sendFrame error", e);
       } finally {
         setTimeout(() => setFrameReady(true), 1000);
       }
@@ -93,7 +85,6 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [permission, isFocused, frameReady]);
 
-  // 3) 왼쪽/오른쪽 분류 + TTS (targetClass 설정 시 그 클래스만 안내)
   useEffect(() => {
     if (photoSize.width <= 1 || detections.length === 0) return;
 
@@ -147,8 +138,7 @@ export default function HomeScreen() {
       if (msg) {
         try {
           Speech.stop();
-          Speech.speak(msg, { language: "ko-KR", pitch: 1.0, rate: 2.0 }); // ✅ 2배속
-          console.log("🗣️ speak:", msg);
+          Speech.speak(msg, { language: "ko-KR", pitch: 1.0, rate: 2.0 });
         } catch {}
         lastSpeakRef.current = now;
         lastGroupsRef.current = { left: leftStr, right: rightStr };
@@ -156,7 +146,6 @@ export default function HomeScreen() {
     }
   }, [detections, photoSize, targetClass]);
 
-  // 4) 권한 요청 UI
   if (!permission) return <View />;
   if (!permission.granted) {
     return (
@@ -168,10 +157,8 @@ export default function HomeScreen() {
     );
   }
 
-  // 5) 렌더링
   return (
     <View style={styles.container}>
-      {/* 🔘 상단 제어: 찾기/확인/취소 */}
       <View style={styles.searchBar}>
         <TouchableOpacity
           style={styles.btn}
@@ -203,7 +190,6 @@ export default function HomeScreen() {
             const want = (targetInput || "").trim().toLowerCase();
             if (!want) return;
 
-            // ✅ 서버에서 받은 클래스 목록으로 검증 (부분일치 허용)
             const candidates = classNames.filter((c) =>
               c.toLowerCase().includes(want)
             );
@@ -250,43 +236,6 @@ export default function HomeScreen() {
       </View>
 
       {isFocused && <CameraView style={styles.camera} ref={cameraRef} />}
-
-      {/* 박스 오버레이: 타깃 설정 시 타깃 강조, 아니면 모두 동일 */}
-      {/* <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-        {detections.map((item, idx) => {
-          const scaleX = previewWidth  / photoSize.width;
-          const scaleY = previewHeight / photoSize.height;
-
-          const x = item.bbox[0] * scaleX;
-          const y = item.bbox[1] * scaleY;
-          const w = (item.bbox[2] - item.bbox[0]) * scaleX;
-          const h = (item.bbox[3] - item.bbox[1]) * scaleY;
-
-          const isTarget = targetClass
-            ? (item.class_name || '').toLowerCase().includes(targetClass.toLowerCase())
-            : true;
-
-          const stroke = isTarget ? 'yellow' : 'rgba(0,255,0,0.35)';
-          const labelFill = isTarget ? 'yellow' : 'rgba(0,255,0,0.6)';
-          const strokeWidth = isTarget ? 3 : 2;
-
-          return (
-            <React.Fragment key={idx}>
-              <Rect
-                x={x} y={y}
-                width={w} height={h}
-                stroke={stroke} strokeWidth={strokeWidth} fill="transparent"
-              />
-              <SvgText
-                x={x + 4} y={Math.max(12, y - 6)}
-                fontSize={14} fontWeight={isTarget ? 'bold' : 'normal'} fill={labelFill}
-              >
-                {`${item.class_name} (${item.confidence})`}
-              </SvgText>
-            </React.Fragment>
-          );
-        })}
-      </Svg> */}
     </View>
   );
 }

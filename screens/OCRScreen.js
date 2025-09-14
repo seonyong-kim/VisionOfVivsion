@@ -1,28 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, Touchable, TouchableOpacity } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useIsFocused } from '@react-navigation/native';
-import { useAutoSTT } from '../src/services/useAutoSTT';
-import * as Speech from 'expo-speech';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  Button,
+  StyleSheet,
+  Touchable,
+  TouchableOpacity,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useIsFocused } from "@react-navigation/native";
+import { useAutoSTT } from "../src/services/useAutoSTT";
+import * as Speech from "expo-speech";
 
-const OCRScreen = ({route, navigation}) => {
-  //const {rate, pitch} = route.params;
-  const [facing, setFacing] = useState('back');
+const OCRScreen = ({ route, navigation }) => {
+  const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const [image, setImage] = useState(null);
   const cameraRef = useRef(null);
   const [sttOn, setSttOn] = useState(true);
-  const [disabled, SetDisabled] = useState(false); // 버튼 중복 방지를 위해서
+  const [disabled, SetDisabled] = useState(false);
 
-  // 문자 인식 진입하면 안내하는 TTS
   useEffect(() => {
-    console.log("OCR 화면");
-
     const StartTTS = navigation.addListener("focus", () => {
       Speech.speak("글자 인식", {
-        //rate: rate,
-        //pitch: pitch
+        rate: rate,
+        pitch: pitch,
       });
     });
 
@@ -30,92 +33,87 @@ const OCRScreen = ({route, navigation}) => {
   }, [navigation]);
 
   useAutoSTT({
-  endpoint: "http://3.37.7.103:5012/stt",
-  segmentMs: 5000,
-  enabled: isFocused,
-  onResult: ({ text }) => {
-    if (!text) return;
-    const cmd = text.trim();
-    console.log("인식:", cmd);
+    endpoint: "서버IP/stt",
+    segmentMs: 5000,
+    enabled: isFocused,
+    onResult: ({ text }) => {
+      if (!text) return;
+      const cmd = text.trim();
 
-    // STT를 잠깐 끄고 
-    setSttOn(false);
-    Speech.stop();
+      setSttOn(false);
+      Speech.stop();
 
-    if (cmd.includes("객체")) {
-      Speech.speak("객체 인식");
-      navigation.navigate("Home");
-    } else if (cmd.includes("길")) {
-      Speech.speak("길 찾기"); 
-      navigation.navigate("Navigation");
-    } else if (cmd.includes("설정")) {
-      Speech.speak("설정");
-      navigation.navigate("Setting");
-    } else if (cmd.includes("시작")) {
-      takePicture();
-    }
-  }
-});
+      if (cmd.includes("객체")) {
+        Speech.speak("객체 인식");
+        navigation.navigate("Home");
+      } else if (cmd.includes("길")) {
+        Speech.speak("길 찾기");
+        navigation.navigate("Navigation");
+      } else if (cmd.includes("설정")) {
+        Speech.speak("설정");
+        navigation.navigate("Setting");
+      } else if (cmd.includes("시작")) {
+        takePicture();
+      }
+    },
+  });
 
-  // 사진 찍는 함수
-  const takePicture = async() =>{
-    console.log("OCR 시작");
+  const takePicture = async () => {
     let photo = null;
 
-    if(cameraRef.current){
-      SetDisabled(true); // 버튼 누르면 버튼 비활성화
+    if (cameraRef.current) {
+      SetDisabled(true);
       photo = await cameraRef.current.takePictureAsync({ base64: false });
       setImage(photo);
-      console.log(`[${new Date().toISOString()}] 📤 전송 시작`);
       Speech.speak("글자 인식을 진행합니다. 잠시만 기다려 주세요.", {
-        language: 'ko-KR',
-        //rate: rate,
-        //pitch:pitch
+        language: "ko-KR",
+        rate: rate,
+        pitch: pitch,
       });
     }
-    
+
     const formData = new FormData();
-      formData.append('image', {
-        uri: photo.uri,
-        name: 'OCR.jpg',
-        type: 'image/jpeg',
-      });
-      
-    try{
-      const response = await fetch('http://3.37.7.103:5002/ocr/image', {
+    formData.append("image", {
+      uri: photo.uri,
+      name: "OCR.jpg",
+      type: "image/jpeg",
+    });
+
+    try {
+      const response = await fetch("서버IP/ocr/image", {
         method: "POST",
         body: formData,
         headers: {
-          "Content-Type" : "multipart/form-data",
-        }
-      })
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    if (response.ok) {
-      const result = await response.json(); // 서버가 JSON 응답을 줄 경우
-      console.log(`[${new Date().toISOString()}] 사진 전송 성공:`, result);
-      Speech.speak(result.translated_text || '인식된 글자가 없습니다 다시 시도해 주세요.', {
-          language: 'ko-KR',
-          //rate: rate,
-          //pitch: pitch
+      if (response.ok) {
+        const result = await response.json();
+        Speech.speak(
+          result.translated_text ||
+            "인식된 글자가 없습니다 다시 시도해 주세요.",
+          {
+            language: "ko-KR",
+            rate: rate,
+            pitch: pitch,
+          }
+        );
+      } else {
+        Speech.speak("오류가 발생." + "글자 인식 실패", {
+          language: "ko-KR",
+          rate: rate,
+          pitch: pitch,
         });
-    } else {
-      Speech.speak("오류가 발생." + "글자 인식 실패",{
-          language: 'ko-KR',
-          //rate: rate,
-          //pitch:pitch
-        })
-      console.warn("서버 응답 실패:", response.status);
-      const errorText = await response.text();
-      console.warn("서버 응답 내용:", errorText);
-    }
-    }catch(error){
+        const errorText = await response.text();
+        console.warn("서버 응답 내용:", errorText);
+      }
+    } catch (error) {
       console.error("OCR 업로드 실패:", error);
     }
-    SetDisabled(false); // 결과 출력되면 버튼 활성화
+    SetDisabled(false);
   };
 
-  
-  // 카메라 권한에 필요한 과정
   if (!permission) {
     return <View />;
   }
@@ -129,69 +127,63 @@ const OCRScreen = ({route, navigation}) => {
     );
   }
 
-  // 화면 구성
   return (
     <View style={styles.container}>
-      {/* 화면이 포커스 되었을 때만 카메라 렌더링 */}
       {isFocused ? (
         <>
-        <CameraView 
-        style={styles.camera} 
-        facing={facing}
-        ref={cameraRef}/>
-        {/* CameraView에는 자식 컴포넌트를 둘수 없기 때문에 버튼을 따로 만들어야 한다.*/}
-        {/* 카메라와 겹치게 하는 방법이 최선(절대적인 위치를 같게 만든다*/}
-        {/*buttonContainer와  button를 참고해서 한다.*/}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style = {styles.button} onPress = {takePicture} disabled={disabled}> 
-            <Text style={styles.text}>글자 인식</Text>
-          </TouchableOpacity>
-        </View>
+          <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={takePicture}
+              disabled={disabled}
+            >
+              <Text style={styles.text}>글자 인식</Text>
+            </TouchableOpacity>
+          </View>
         </>
       ) : (
-        // 빈 뷰로 대체하여 메모리 해제 도와준다. 
         <View style={styles.camera} />
       )}
     </View>
   );
 };
 /*
-*/
+ */
 export default OCRScreen;
-
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   message: {
-    textAlign: 'center',
+    textAlign: "center",
     paddingBottom: 10,
   },
   camera: {
     flex: 1,
   },
   buttonContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
   },
   button: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: "#1e90ff",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
   },
   text: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: 'black',
+    fontWeight: "bold",
+    color: "black",
   },
   OCRresult: {
-    position: 'absolute',
-    fontsize: 24
+    position: "absolute",
+    fontsize: 24,
   },
 });
